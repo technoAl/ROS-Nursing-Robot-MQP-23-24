@@ -12,6 +12,7 @@ from PIL import Image as im
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped, Point, Pose
 
+
 def object_points(tag_size):
     return [[-tag_size / 2, tag_size / 2, 0.0],
             [tag_size / 2, tag_size / 2, 0.0],
@@ -33,9 +34,9 @@ class Pipeline:
         ### Tell ROS that this node publishes Twist messages on the '/cmd_vel' topic
         self.tag_pub = rospy.Publisher('/tag', Path, queue_size=1)
 
-        rospy.Subscriber('/camera/color/camera_info', CameraInfo, self.update_intrinsics)
+        # rospy.Subscriber('/camera/color/camera_info', CameraInfo, self.update_intrinsics)
 
-        rospy.Subscriber('/camera/color/image_raw', Image, self.update_current_image, queue_size=1)
+        # rospy.Subscriber('/camera/color/image_raw', Image, self.update_current_image, queue_size=1)
 
         self.current_image = 0
         self.intrinsics = 0
@@ -55,10 +56,27 @@ class Pipeline:
         # (320.305, 242.789)
         #
 
-    def update_current_image(self, msg):
-        self.current_image = msg
-        self.pipeline(msg)
-        # self.record_images(msg)
+    def update_current_image(self):
+        cam_port = 4
+        # time1 = rospy.get_time()
+        cam = cv2.VideoCapture(cam_port)
+        result, image = cam.read()
+        self.pipeline(image);
+        rospy.loginfo(image.shape)
+        # time2 = rospy.get_time()
+        # rospy.loginfo(time2 - time1)
+        # if result:
+        #     cv2.imshow("bah", image)
+        #     cv2.waitKey(0)
+            
+        #     # closing all open windows
+        #     cv2.destroyAllWindows()
+        # else:
+        #     rospy.loginfo("You're stupid")
+        # if result:
+        #     # self.current_image = msg
+        #     self.pipeline(image)
+            # self.record_images(msg)
 
     def record_images(self, image):
         height = image.height
@@ -83,26 +101,26 @@ class Pipeline:
 
     # image as image message
     def pipeline(self, image):
-        height = image.height
-        width = image.width
+        # height = image.height
+        # width = image.width
 
-        # Loop through each pixel of the map and convert it to pixel data
-        new_image = np.zeros((height, width, 3), dtype=np.uint8)
+        # # Loop through each pixel of the map and convert it to pixel data
+        # new_image = np.zeros((height, width, 3), dtype=np.uint8)
 
-        for i in range(height):
-            for j in range(width):
-                for k in range(3):
-                    # BGR encoding for opencv
-                    mult = 2 if k == 0 else 0 if k == 2 else 1
-                    cell = image.data[(i * width * 3 + j * 3 + k)]
-                    if cell >= 0:
-                        new_image[i][j][mult] = cell
+        # for i in range(height):
+        #     for j in range(width):
+        #         for k in range(3):
+        #             # BGR encoding for opencv
+        #             mult = 2 if k == 0 else 0 if k == 2 else 1
+        #             cell = image.data[(i * width * 3 + j * 3 + k)]
+        #             if cell >= 0:
+        #                 new_image[i][j][mult] = cell
 
-        gray_image = cv2.cvtColor(new_image, cv2.COLOR_BGR2GRAY)
+        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
         # cv2.imshow("header", new_image)
         # cv2.waitKey(0)
-        #
+        
         # # closing all open windows
         # cv2.destroyAllWindows()
 
@@ -116,12 +134,13 @@ class Pipeline:
                                     [0, fy, cy],
                                     [0,  0,  1]])# elements from the K matrix
 
-        TAG_SIZE = 0.076  # Tag size from Step 1 in meters
+        TAG_SIZE = 0.028  # Tag size from Step 1 in meters
         obj_pts = np.array(object_points(TAG_SIZE))
 
         detector = apriltag(family="tag36h11")
         detections = detector.detect(gray_image) #, estimate_tag_pose=True, camera_params=PARAMS, tag_size=TAG_SIZE)
         if len(detections) > 0:
+            rospy.loginfo("Discovered Tag")
             for tag in detections:
                 center = tag['center']
                 lb_rb_rt_lt = tag['lb-rb-rt-lt']
@@ -139,12 +158,12 @@ class Pipeline:
                     # p2 = (int(lt_rt_rb_lb[1][0]), int(lt_rt_rb_lb[1][1]))
                     # p3 = (int(lt_rt_rb_lb[2][0]), int(lt_rt_rb_lb[2][1]))
                     # p4 = (int(lt_rt_rb_lb[3][0]), int(lt_rt_rb_lb[3][1]))
-                    #
+                    
                     # new_image = cv2.line(new_image, p1, p2, (0, 255, 0), 2)
                     # new_image = cv2.line(new_image, p2, p3, (0, 255, 0), 2)
                     # new_image = cv2.line(new_image, p3, p4, (0, 255, 0), 2)
                     # new_image = cv2.line(new_image, p4, p1, (0, 255, 0), 2)
-                    #
+                    
                     # cv2.imshow("max range", new_image)
                     # cv2.waitKey(0)
                     tag_msg = Path()
@@ -160,7 +179,7 @@ class Pipeline:
                     rotation_stamped.header = generic_header
                     rotation_stamped.header.stamp = rospy.Time.now()
 
-                    # handle pos
+                    # handle rotation
                     rotation = Pose()
                     rotation.position = Point(prvecs[0][0], prvecs[1][0], prvecs[2][0])
                     rotation_stamped.pose = rotation
@@ -182,7 +201,11 @@ class Pipeline:
                 # imgpts, jac = cv2.projectPoints(opoints, prvecs, ptvecs, intrinsics_mat)
                 # draw_boxes(new_image, imgpts, edges)
 
+
     def run(self):
+        r = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            self.update_current_image()
         rospy.spin()
 
 

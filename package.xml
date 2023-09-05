@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>camera-for-hololens</name>
+  <name>ROS-Nursing-Robot-MQP-23-24</name>
   <version>0.0.0</version>
   <description>The camera-for-hololens package</description>
 
@@ -60,7 +60,7 @@
   <exec_depend>std_msgs</exec_depend>
 
 
-  <!-- The export tag contains other, unspecified, tags -->
+  <!-- The export tag contains othr, unspecified, tags -->
   <export>
     <!-- Other tools can request additional information be placed here -->
 
