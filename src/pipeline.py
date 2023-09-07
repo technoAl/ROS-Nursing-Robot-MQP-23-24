@@ -124,17 +124,17 @@ class Pipeline:
         # # closing all open windows
         # cv2.destroyAllWindows()
 
-        #   FocalLength: [629.0741 615.1736]
-        #   PrincipalPoint: [325.2477 251.2810]
-        fx = 629.0741
-        fy = 615.1736
-        cx = 325.2477
-        cy = 251.2810
+        #   FocalLength: [1380.4628 1379.4309]
+        #   PrincipalPoint: [956.5579 542.9203]
+        fx = 1380.4628
+        fy = 1379.4309
+        cx = 956.5579
+        cy = 542.9203
         intrinsics_mat = np.array([[fx, 0, cx],
                                     [0, fy, cy],
                                     [0,  0,  1]])# elements from the K matrix
 
-        TAG_SIZE = 0.028  # Tag size from Step 1 in meters
+        TAG_SIZE = 0.076  # Tag size from Step 1 in meters
         obj_pts = np.array(object_points(TAG_SIZE))
 
         detector = apriltag(family="tag36h11")
@@ -194,9 +194,10 @@ class Pipeline:
                     position.position = Point(ptvecs[0][0], ptvecs[1][0], ptvecs[2][0])
                     position_stamped.pose = position
                     tag_msg.poses.append(position_stamped)
-                    rospy.loginfo(str(ptvecs[0][0]) + " " + str(ptvecs[1][0]) + " " + str(ptvecs[2][0]))
-                    #rospy.loginfo(str(ptvecs[0]) + " " + str(ptvecs[1]) + " " + ptvecs[2])
-                    self.tag_pub.publish(tag_msg)
+                    if ptvecs[2][0] > 0 and ptvecs[2][0] < 2.5:
+                        rospy.loginfo(str(ptvecs[0][0]) + " " + str(ptvecs[1][0]) + " " + str(ptvecs[2][0]))
+                        #rospy.loginfo(str(ptvecs[0]) + " " + str(ptvecs[1]) + " " + ptvecs[2])
+                        self.tag_pub.publish(tag_msg)
 
                 # imgpts, jac = cv2.projectPoints(opoints, prvecs, ptvecs, intrinsics_mat)
                 # draw_boxes(new_image, imgpts, edges)
