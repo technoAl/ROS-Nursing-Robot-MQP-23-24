@@ -11,6 +11,8 @@ from apriltag import apriltag
 from PIL import Image as im
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped, Point, Pose
+import pyrealsense2 as rs
+import time
 
 
 def object_points(tag_size):
@@ -38,11 +40,13 @@ class Pipeline:
 
         # rospy.Subscriber('/camera/color/image_raw', Image, self.update_current_image, queue_size=1)
 
+        self.pipeline_rate = 0 
+
         self.current_image = 0
         self.intrinsics = 0
 
         ### Making robot go 10Hz
-        self.rate = rospy.Rate(20)
+        self.rate = rospy.Rate(60)
         self.count = 0
 
     def update_intrinsics(self, msg):
@@ -57,15 +61,20 @@ class Pipeline:
         #
 
     def update_current_image(self):
-        cam_port = 4
+        self.tim = self.current_milli_time()
+        cam_port = 5
+
         # time1 = rospy.get_time()
         cam = cv2.VideoCapture(cam_port)
         result, image = cam.read()
+        rospy.loginfo("Cam Time " + str(self.current_milli_time() - self.tim))
+        rospy.loginfo(cam.get(cv2.CAP_PROP_FPS))
+        time1 = self.current_milli_time()
         self.pipeline(image);
-        rospy.loginfo(image.shape)
-        # time2 = rospy.get_time()
-        # rospy.loginfo(time2 - time1)
-        # if result:
+        # rospy.loginfo(image.shape)
+        self.pipeline_rate = 0
+        
+         # if result:
         #     cv2.imshow("bah", image)
         #     cv2.waitKey(0)
             
@@ -116,7 +125,11 @@ class Pipeline:
         #             if cell >= 0:
         #                 new_image[i][j][mult] = cell
 
+        time1 = self.current_milli_time()
         gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        time2 = self.current_milli_time()
+        rospy.loginfo("Convert Time " + str(time2 - time1))
+        
 
         # cv2.imshow("header", new_image)
         # cv2.waitKey(0)
@@ -136,11 +149,12 @@ class Pipeline:
 
         TAG_SIZE = 0.076  # Tag size from Step 1 in meters
         obj_pts = np.array(object_points(TAG_SIZE))
-
         detector = apriltag(family="tag36h11")
+        time1 = self.current_milli_time()
         detections = detector.detect(gray_image) #, estimate_tag_pose=True, camera_params=PARAMS, tag_size=TAG_SIZE)
+        time2 = self.current_milli_time()
+        rospy.loginfo("Detector Time " + str(time2 - time1))
         if len(detections) > 0:
-            rospy.loginfo("Discovered Tag")
             for tag in detections:
                 center = tag['center']
                 lb_rb_rt_lt = tag['lb-rb-rt-lt']
@@ -148,7 +162,13 @@ class Pipeline:
                 for i in range(4):
                     lt_rt_rb_lb[i] = lb_rb_rt_lt[3-i]
 
-                good, prvecs, ptvecs = cv2.solvePnP(obj_pts, lt_rt_rb_lb, intrinsics_mat, ()) #, flags=cv2.SOLVEPNP_IPPE_SQUARE
+                time1 = self.current_milli_time()
+                good, prvecs, ptvecs = cv2.solvePnP(obj_pts, lt_rt_rb_lb, intrinsics_mat, (), flags=cv2.SOLVEPNP_IPPE_SQUARE)
+                time2 = self.current_milli_time()
+                rospy.loginfo("Solver Time " + str(time2 - time1))
+
+                
+                 
                 if good:
 
                     # pt = lt_rt_rb_lb[0]
@@ -166,6 +186,7 @@ class Pipeline:
                     
                     # cv2.imshow("max range", new_image)
                     # cv2.waitKey(0)
+                    time1 = self.current_milli_time()
                     tag_msg = Path()
 
                     # Header
@@ -194,17 +215,30 @@ class Pipeline:
                     position.position = Point(ptvecs[0][0], ptvecs[1][0], ptvecs[2][0])
                     position_stamped.pose = position
                     tag_msg.poses.append(position_stamped)
+
+                    time2 = self.current_milli_time()
+                    rospy.loginfo("Make Time " + str(time2 - time1))
                     if ptvecs[2][0] > 0 and ptvecs[2][0] < 2.5:
                         rospy.loginfo(str(ptvecs[0][0]) + " " + str(ptvecs[1][0]) + " " + str(ptvecs[2][0]))
                         #rospy.loginfo(str(ptvecs[0]) + " " + str(ptvecs[1]) + " " + ptvecs[2])
+                        time1 = self.current_milli_time()
                         self.tag_pub.publish(tag_msg)
+                        time2 = self.current_milli_time()
+                        rospy.loginfo("Publish Time " + str(time2 - time1))
+                        self.pipeline_rate += 1
+                        rospy.loginfo(self.current_milli_time()-self.tim)
+
+                        
 
                 # imgpts, jac = cv2.projectPoints(opoints, prvecs, ptvecs, intrinsics_mat)
                 # draw_boxes(new_image, imgpts, edges)
+    
 
+    def current_milli_time(self):
+        return round(time.time() * 1000)
 
     def run(self):
-        r = rospy.Rate(10)
+        r = rospy.Rate(60)
         while not rospy.is_shutdown():
             self.update_current_image()
         rospy.spin()
