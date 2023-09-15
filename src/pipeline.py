@@ -8,17 +8,18 @@ import cv2
 from apriltag import apriltag
 from PIL import Image as im
 from nav_msgs.msg import Path
-from geometry_msgs.msg import PoseStamped, Point, Pose, Quaternion
+from geometry_msgs.msg import PoseStamped, Point, Pose, Quaternion, TransformStamped, Vector3, Transform
 import pyrealsense2 as rs
 import time
-from tf.transformations import quaternion_from_euler
+from tf.transformations import quaternion_from_euler, quaternion_from_matrix
+import tf
 
 
 def object_points(tag_size):
     return [[-tag_size / 2, tag_size / 2, 0.0],
             [tag_size / 2, tag_size / 2, 0.0],
             [tag_size / 2, -tag_size / 2, 0.0],
-            [-tag_size / 2, tag_size / 2, 0.0]]
+            [-tag_size / 2, -tag_size / 2, 0.0]]
 
 
 class Pipeline:
@@ -27,19 +28,18 @@ class Pipeline:
         """
         Class constructor
         """
-        rospy.sleep(5)
 
         ### Initialize node, name it 'lab2'
         rospy.init_node('pipeline')
 
         ### Tell ROS that this node publishes Twist messages on the '/cmd_vel' topic
-        self.tag_pub = rospy.Publisher('/april/calibration_box', PoseStamped, queue_size=1)
+        self.tag_pub = rospy.Publisher('/april/calibration_box', TransformStamped, queue_size=1)
 
         # rospy.Subscriber('/camera/color/camera_info', CameraInfo, self.update_intrinsics)
 
         # rospy.Subscriber('/camera/color/image_raw', Image, self.update_current_image, queue_size=1)
 
-        self.pipeline_rate = 0 
+        self.pipeline_rate = 0
 
         self.current_image = 0
         self.intrinsics = 0
@@ -61,7 +61,7 @@ class Pipeline:
         if not found_rgb:
             rospy.loginfo("The demo requires Depth camera with Color sensor")
             exit(0)
-        
+
         self.rsconfig.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
 
         self.rsconfig.enable_stream(rs.stream.color, 1920, 1080, rs.format.bgr8, 30)
@@ -70,6 +70,7 @@ class Pipeline:
         self.rate = rospy.Rate(60)
         self.count = 0
         #
+        rospy.sleep(1)
 
     def update_current_image(self):
 
@@ -101,7 +102,8 @@ class Pipeline:
 
                 # If depth and color resolutions are different, resize color image to match depth image for display
                 if depth_colormap_dim != color_colormap_dim:
-                    resized_color_image = cv2.resize(color_image, dsize=(depth_colormap_dim[1], depth_colormap_dim[0]), interpolation=cv2.INTER_AREA)
+                    resized_color_image = cv2.resize(color_image, dsize=(depth_colormap_dim[1], depth_colormap_dim[0]),
+                                                     interpolation=cv2.INTER_AREA)
                     images = np.hstack((resized_color_image, depth_colormap))
                 else:
                     images = np.hstack((color_image, depth_colormap))
@@ -130,7 +132,7 @@ class Pipeline:
                     cell = image.data[(i * width * 3 + j * 3 + k)]
                     if cell >= 0:
                         new_image[i][j][mult] = cell
-        cv2.imwrite(str(self.count)+".jpg", new_image)
+        cv2.imwrite(str(self.count) + ".jpg", new_image)
         print("done writing image")
         self.count += 1
         rospy.sleep(2)
@@ -154,11 +156,10 @@ class Pipeline:
 
         gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         # rospy.loginfo("Convert Time " + str(time2 - time1))
-        
 
         # cv2.imshow("header", new_image)
         # cv2.waitKey(0)
-        
+
         # # closing all open windows
         # cv2.destroyAllWindows()
 
@@ -173,13 +174,13 @@ class Pipeline:
         # cx = 325.2477
         # cy = 251.2810
         intrinsics_mat = np.array([[fx, 0, cx],
-                                    [0, fy, cy],
-                                    [0,  0,  1]])# elements from the K matrix
+                                   [0, fy, cy],
+                                   [0, 0, 1]])  # elements from the K matrix
 
         TAG_SIZE = 0.076  # Tag size from Step 1 in meters
         obj_pts = np.array(object_points(TAG_SIZE))
         detector = apriltag(family="tag36h11")
-        detections = detector.detect(gray_image) #, estimate_tag_pose=True, camera_params=PARAMS, tag_size=TAG_SIZE)
+        detections = detector.detect(gray_image)  # , estimate_tag_pose=True, camera_params=PARAMS, tag_size=TAG_SIZE)
         # rospy.loginfo("Detector Time " + str(time2 - time1))
         if len(detections) > 0:
             for tag in detections:
@@ -187,15 +188,25 @@ class Pipeline:
                 lb_rb_rt_lt = tag['lb-rb-rt-lt']
                 lt_rt_rb_lb = np.zeros((4, 2))
                 for i in range(4):
-                    lt_rt_rb_lb[i] = lb_rb_rt_lt[3-i]
+                    lt_rt_rb_lb[i] = lb_rb_rt_lt[3 - i]
+
+                # rospy.loginfo(lt_rt_rb_lb)
 
                 # time1 = self.current_milli_time()
-                good, prvecs, ptvecs = cv2.solvePnP(obj_pts, lt_rt_rb_lb, intrinsics_mat, (), flags=cv2.SOLVEPNP_IPPE_SQUARE)
+                good, prvecs, ptvecs = cv2.solvePnP(obj_pts, lt_rt_rb_lb, intrinsics_mat, (),
+                                                    flags=cv2.SOLVEPNP_IPPE_SQUARE)
                 # time2 = self.current_milli_time()
                 # rospy.loginfo("Solver Time " + str(time2 - time1))
 
-                
-                 
+                # prvecs[0][0] = (prvecs[0][0] + 2 * math.pi) % (2 * math.pi)
+                # prvecs[1][0] = (prvecs[1][0] + 2 * math.pi) % (2 * math.pi)
+                # prvecs[2][0] = (prvecs[2][0] + 2 * math.pi) % (2 * math.pi)
+
+                rospy.loginfo(
+                    str(prvecs[0][0] / (2 * math.pi) * 360) + " " + str(prvecs[1][0] / (2 * math.pi) * 360) + " " + str(
+                        prvecs[2][0] / (2 * math.pi) * 360))
+                # rospy.loginfo(prvecs.shape)
+
                 if good:
 
                     # pt = lt_rt_rb_lb[0]
@@ -205,40 +216,54 @@ class Pipeline:
                     # p2 = (int(lt_rt_rb_lb[1][0]), int(lt_rt_rb_lb[1][1]))
                     # p3 = (int(lt_rt_rb_lb[2][0]), int(lt_rt_rb_lb[2][1]))
                     # p4 = (int(lt_rt_rb_lb[3][0]), int(lt_rt_rb_lb[3][1]))
-                    
-                    # new_image = cv2.line(new_image, p1, p2, (0, 255, 0), 2)
-                    # new_image = cv2.line(new_image, p2, p3, (0, 255, 0), 2)
-                    # new_image = cv2.line(new_image, p3, p4, (0, 255, 0), 2)
-                    # new_image = cv2.line(new_image, p4, p1, (0, 255, 0), 2)
-                    
-                    # cv2.imshow("max range", new_image)
+                    #
+                    # image = cv2.line(image, p1, p2, (0, 255, 0), 2)
+                    # image = cv2.line(image, p2, p3, (0, 255, 0), 2)
+                    # #new_image = cv2.line(new_image, p3, p4, (0, 255, 0), 2)
+                    # #new_image = cv2.line(new_image, p4, p1, (0, 255, 0), 2)
+                    #
+                    # cv2.imshow("max range", image)
                     # cv2.waitKey(0)
                     # time1 = self.current_milli_time()
-                    tag_msg = PoseStamped()
+                    tag_msg = TransformStamped()
 
                     # Header
                     generic_header = Header()
                     generic_header.stamp = rospy.Time.now()
-                    generic_header.frame_id = "none"
+                    generic_header.frame_id = "map"
                     tag_msg.header = generic_header
+                    tag_msg.child_frame_id = "tag_trans"
 
                     # Make 2 Pose w/ vectors
 
                     # handle rotation
-                    pose = Pose()
-                    pose.position = Point(ptvecs[0][0], ptvecs[1][0], ptvecs[2][0])
+                    transform = Transform()
+                    transform.translation = Vector3(ptvecs[0][0], ptvecs[1][0], ptvecs[2][0])
 
+                    rot_matrix,_ = cv2.Rodrigues(prvecs)
+
+
+                    new_mat = np.zeros((4,4), np.float32)
+                    for i in range(3):
+                        for j in range(3):
+                            new_mat[i][j] = rot_matrix[i][j]
+                    new_mat[3,3] = 1
+                    rospy.loginfo(rot_matrix)
                     # handle pos
-                    orientation = quaternion_from_euler(prvecs[0][0], prvecs[1][0], prvecs[2][0])
-                    pose.orientation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
-                    tag_msg.pose = pose
+                    orientation = quaternion_from_matrix(new_mat)
+                    transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
+                    tag_msg.transform = transform
 
+                    br = tf.TransformBroadcaster()
+                    br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (
+                    transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
+                                     rospy.Time.now(), "calibration_box", "camera")
 
                     # time2 = self.current_milli_time()
                     # rospy.loginfo("Make Time " + str(time2 - time1))
                     if ptvecs[2][0] > 0 and ptvecs[2][0] < 2.5:
-                        #rospy.loginfo(str(ptvecs[0][0]) + " " + str(ptvecs[1][0]) + " " + str(ptvecs[2][0]))
-                        #rospy.loginfo(str(ptvecs[0]) + " " + str(ptvecs[1]) + " " + ptvecs[2])
+                        # rospy.loginfo(str(ptvecs[0][0]) + " " + str(ptvecs[1][0]) + " " + str(ptvecs[2][0]))
+                        # rospy.loginfo(str(ptvecs[0]) + " " + str(ptvecs[1]) + " " + ptvecs[2])
                         # time1 = self.current_milli_time()
                         self.tag_pub.publish(tag_msg)
                         # time2 = self.current_milli_time()
@@ -246,11 +271,8 @@ class Pipeline:
                         self.pipeline_rate += 1
                         # rospy.loginfo(self.current_milli_time()-self.tim)
 
-                        
-
                 # imgpts, jac = cv2.projectPoints(opoints, prvecs, ptvecs, intrinsics_mat)
                 # draw_boxes(new_image, imgpts, edges)
-    
 
     def current_milli_time(self):
         return round(time.time() * 1000)

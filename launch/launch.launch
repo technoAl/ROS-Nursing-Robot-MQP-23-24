@@ -1,10 +1,11 @@
 <launch>
-        <arg name="tcp_ip" default="0.0.0.0"/>
-        <arg name="tcp_port" default="10000"/>
+    <arg name="tcp_ip" default="0.0.0.0"/>
+    <arg name="tcp_port" default="10000"/>
 
-        <node name="server_endpoint" pkg="ros_tcp_endpoint" type="default_server_endpoint.py" args="--wait" output="screen" respawn="true">
-                <param name="tcp_ip" type="string" value="$(arg tcp_ip)"/>
-                <param name="tcp_port" type="int" value="$(arg tcp_port)"/>
-        </node>
+    <node name="server_endpoint" pkg="ros_tcp_endpoint" type="default_server_endpoint.py" args="--wait" output="screen" respawn="true">
+            <param name="tcp_ip" type="string" value="$(arg tcp_ip)"/>
+            <param name="tcp_port" type="int" value="$(arg tcp_port)"/>
+    </node>
+    <node pkg="tf" type="static_transform_publisher" name="camera" args="0 0 0.5 0 -3.14 -1.57 world camera 100" />
 	<node name="pipeline" pkg="ROS-Nursing-Robot-MQP-23-24" type="pipeline.py" output="screen"></node>
  </launch>
