@@ -64,11 +64,14 @@ class Pipeline:
 
         self.rsconfig.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
 
-        self.rsconfig.enable_stream(rs.stream.color, 1920, 1080, rs.format.bgr8, 30)
+        self.rsconfig.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
 
         ### Making robot go 10Hz
         self.rate = rospy.Rate(60)
         self.count = 0
+
+        self.median_filter = [TransformStamped(), TransformStamped(), TransformStamped()]
+        self.median_count = 0
         #
         rospy.sleep(1)
 
@@ -110,6 +113,7 @@ class Pipeline:
 
                 # Show images
                 self.pipeline(color_image)
+                #self.record_images(color_image)
                 # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
                 # cv2.imshow('RealSense', images)
                 # cv2.waitKey(1)
@@ -117,23 +121,24 @@ class Pipeline:
             self.rspipeline.stop()
 
     def record_images(self, image):
-        height = image.height
-        width = image.width
-
-        # Loop through each pixel of the map and convert it to pixel data
-        new_image = np.zeros((height, width, 3), dtype=np.uint8)
-
-        for i in range(height):
-            for j in range(width):
-                for k in range(3):
-                    # BGR encoding for opencv
-
-                    mult = 2 if k == 0 else 0 if k == 2 else 1
-                    cell = image.data[(i * width * 3 + j * 3 + k)]
-                    if cell >= 0:
-                        new_image[i][j][mult] = cell
-        cv2.imwrite(str(self.count) + ".jpg", new_image)
+        # height = image.height
+        # width = image.width
+        #
+        # # Loop through each pixel of the map and convert it to pixel data
+        # new_image = np.zeros((height, width, 3), dtype=np.uint8)
+        #
+        # for i in range(height):
+        #     for j in range(width):
+        #         for k in range(3):
+        #             # BGR encoding for opencv
+        #
+        #             mult = 2 if k == 0 else 0 if k == 2 else 1
+        #             cell = image.data[(i * width * 3 + j * 3 + k)]
+        #             if cell >= 0:
+        #                 new_image[i][j][mult] = cell
+        cv2.imwrite(str(self.count) + ".jpg", image)
         print("done writing image")
+        print(self.count)
         self.count += 1
         rospy.sleep(2)
 
@@ -163,21 +168,38 @@ class Pipeline:
         # # closing all open windows
         # cv2.destroyAllWindows()
 
+        # 1080 by 1920
         #   FocalLength: [1380.4628 1379.4309]
         #   PrincipalPoint: [956.5579 542.9203]
-        fx = 1380.4628
-        fy = 1379.4309
-        cx = 956.5579
-        cy = 542.9203
+        # fx = 1380.4628
+        # fy = 1379.4309
+        # cx = 956.5579
+        # cy = 542.9203
+
+        # 480 by 640
         # fx = 629.0741
         # fy = 615.1736
         # cx = 325.2477
         # cy = 251.2810
+
+        # 1280 by 720
+        # FocalLength: [908.3491 906.5133]
+        # PrincipalPoint: [632.3028 343.9200]
+        # fx = 908.3491
+        # fy = 906.5133
+        # cx = 632.3028
+        # cy = 343.9200
+        # Camera 2
+        fx = 900.1325
+        fy = 900.2865
+        cx = 631.4351
+        cy = 342.4242
+
         intrinsics_mat = np.array([[fx, 0, cx],
                                    [0, fy, cy],
                                    [0, 0, 1]])  # elements from the K matrix
 
-        TAG_SIZE = 0.076  # Tag size from Step 1 in meters
+        TAG_SIZE = 0.025 #0.062  # Tag size from Step 1 in meters
         obj_pts = np.array(object_points(TAG_SIZE))
         detector = apriltag(family="tag36h11")
         detections = detector.detect(gray_image)  # , estimate_tag_pose=True, camera_params=PARAMS, tag_size=TAG_SIZE)
@@ -197,15 +219,6 @@ class Pipeline:
                                                     flags=cv2.SOLVEPNP_IPPE_SQUARE)
                 # time2 = self.current_milli_time()
                 # rospy.loginfo("Solver Time " + str(time2 - time1))
-
-                # prvecs[0][0] = (prvecs[0][0] + 2 * math.pi) % (2 * math.pi)
-                # prvecs[1][0] = (prvecs[1][0] + 2 * math.pi) % (2 * math.pi)
-                # prvecs[2][0] = (prvecs[2][0] + 2 * math.pi) % (2 * math.pi)
-
-                rospy.loginfo(
-                    str(prvecs[0][0] / (2 * math.pi) * 360) + " " + str(prvecs[1][0] / (2 * math.pi) * 360) + " " + str(
-                        prvecs[2][0] / (2 * math.pi) * 360))
-                # rospy.loginfo(prvecs.shape)
 
                 if good:
 
@@ -248,7 +261,7 @@ class Pipeline:
                         for j in range(3):
                             new_mat[i][j] = rot_matrix[i][j]
                     new_mat[3,3] = 1
-                    rospy.loginfo(rot_matrix)
+                    #rospy.loginfo(rot_matrix)
                     # handle pos
                     orientation = quaternion_from_matrix(new_mat)
                     transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
@@ -259,17 +272,44 @@ class Pipeline:
                     transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
                                      rospy.Time.now(), "calibration_box", "camera")
 
+                    if not (ptvecs[2][0] > 0 and ptvecs[2][0] < 2.5):
+                        continue
+
+                    self.median_count += 1
+                    self.median_filter[self.median_count % 3] = tag_msg
+
+                    final_msg = tag_msg
+                    if self.median_count >= 3:
+                        if self.median_filter[0].transform.translation.z <= self.median_filter[1].transform.translation.z:
+                            if self.median_filter[0].transform.translation.z > self.median_filter[2].transform.translation.z:
+                                final_msg = self.median_filter[0]
+                            else:
+                                final_msg = self.median_filter[2]
+                        else:
+                            if self.median_filter[0].transform.translation.z < self.median_filter[2].transform.translation.z:
+                                final_msg = self.median_filter[0]
+                            else:
+                                final_msg = self.median_filter[2]
+                        self.tag_pub.publish(final_msg)
+                    elif ptvecs[2][0] > 0 and ptvecs[2][0] < 2.5:
+                        self.tag_pub.publish(final_msg)
+
+
+
                     # time2 = self.current_milli_time()
                     # rospy.loginfo("Make Time " + str(time2 - time1))
-                    if ptvecs[2][0] > 0 and ptvecs[2][0] < 2.5:
-                        # rospy.loginfo(str(ptvecs[0][0]) + " " + str(ptvecs[1][0]) + " " + str(ptvecs[2][0]))
-                        # rospy.loginfo(str(ptvecs[0]) + " " + str(ptvecs[1]) + " " + ptvecs[2])
-                        # time1 = self.current_milli_time()
-                        self.tag_pub.publish(tag_msg)
-                        # time2 = self.current_milli_time()
-                        # rospy.loginfo("Publish Time " + str(time2 - time1))
-                        self.pipeline_rate += 1
-                        # rospy.loginfo(self.current_milli_time()-self.tim)
+                    # rospy.loginfo(ptvecs[2][0])
+                    # if ptvecs[2][0] > 0 and ptvecs[2][0] < 2.5:
+                    #     # rospy.loginfo(str(ptvecs[0][0]) + " " + str(ptvecs[1][0]) + " " + str(ptvecs[2][0]))
+                    #     # rospy.loginfo(str(ptvecs[0]) + " " + str(ptvecs[1]) + " " + ptvecs[2])
+                    #     # time1 = self.current_milli_time()
+                    #
+                    #
+                    #     self.tag_pub.publish(tag_msg)
+                    #     # time2 = self.current_milli_time()
+                    #     # rospy.loginfo("Publish Time " + str(time2 - time1))
+                    #     self.pipeline_rate += 1
+                    #     # rospy.loginfo(self.current_milli_time()-self.tim)
 
                 # imgpts, jac = cv2.projectPoints(opoints, prvecs, ptvecs, intrinsics_mat)
                 # draw_boxes(new_image, imgpts, edges)
