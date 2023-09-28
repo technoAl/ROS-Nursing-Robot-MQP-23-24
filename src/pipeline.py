@@ -13,6 +13,7 @@ import pyrealsense2 as rs
 import time
 from tf.transformations import quaternion_from_euler, quaternion_from_matrix
 import tf
+from pyquaternion import Quaternion as pyQuaternion
 
 
 def object_points(tag_size):
@@ -23,6 +24,7 @@ def object_points(tag_size):
 
 
 class Pipeline:
+
     def __init__(self):
         """
         Class constructor
@@ -33,6 +35,7 @@ class Pipeline:
 
         ### Tell ROS that this node publishes Twist messages on the '/cmd_vel' topic
         self.tag_pub = rospy.Publisher('/april/calibration_box', TransformStamped, queue_size=1)
+
         # rospy.Subscriber('/camera/color/camera_info', CameraInfo, self.update_intrinsics)
 
         # rospy.Subscriber('/camera/color/image_raw', Image, self.update_current_image, queue_size=1)
@@ -67,6 +70,18 @@ class Pipeline:
         ### Making robot go 10Hz
         self.rate = rospy.Rate(60)
         self.count = 0
+
+        self.initialized = False
+        self.previousQuat = [0, 0, 0, 0]
+        self.threshold = 10
+        self.currThreshold = self.threshold
+
+        self.previousFour = [0, 0, 0, 0]
+        self.prevTranslation = [0, 0, 0, 0]
+        self.prevCounter = 0
+        self.inMotion = False
+
+        self.prevTrans = 0
 
         self.median_filter = [TransformStamped(), TransformStamped(), TransformStamped()]
         self.median_count = 0
@@ -115,8 +130,6 @@ class Pipeline:
                 # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
                 # cv2.imshow('RealSense', images)
                 # cv2.waitKey(1)
-
-
         finally:
             self.rspipeline.stop()
 
@@ -199,7 +212,7 @@ class Pipeline:
                                    [0, fy, cy],
                                    [0, 0, 1]])  # elements from the K matrix
 
-        TAG_SIZE = 0.0245 #0.062  # Tag size from Step 1 in meters
+        TAG_SIZE = 0.025 #0.062 # Tag size from Step 1 in meters
         obj_pts = np.array(object_points(TAG_SIZE))
         detector = apriltag(family="tag36h11")
         detections = detector.detect(gray_image)  # , estimate_tag_pose=True, camera_params=PARAMS, tag_size=TAG_SIZE)
@@ -225,20 +238,18 @@ class Pipeline:
                     # pt = lt_rt_rb_lb[0]
                     # print(tuple(pt))
 
-                    p1 = (int(lt_rt_rb_lb[0][0]), int(lt_rt_rb_lb[0][1]))
-                    p2 = (int(lt_rt_rb_lb[1][0]), int(lt_rt_rb_lb[1][1]))
-                    p3 = (int(lt_rt_rb_lb[2][0]), int(lt_rt_rb_lb[2][1]))
-                    p4 = (int(lt_rt_rb_lb[3][0]), int(lt_rt_rb_lb[3][1]))
-
-                    image = cv2.line(image, p1, p2, (0, 255, 0), 2)
-                    image = cv2.line(image, p2, p3, (0, 255, 0), 2)
-                    #new_image = cv2.line(new_image, p3, p4, (0, 255, 0), 2)
-                    #new_image = cv2.line(new_image, p4, p1, (0, 255, 0), 2)
-                    image = cv2.line(image, (640, 0), (640, 720), (255, 0, 0), 2)
-                    image = cv2.line(image, (0, 360), (1280, 360), (255, 0, 0), 2)
-
-                    cv2.imshow("Image Feed", image)
-                    cv2.waitKey(1)
+                    # p1 = (int(lt_rt_rb_lb[0][0]), int(lt_rt_rb_lb[0][1]))
+                    # p2 = (int(lt_rt_rb_lb[1][0]), int(lt_rt_rb_lb[1][1]))
+                    # p3 = (int(lt_rt_rb_lb[2][0]), int(lt_rt_rb_lb[2][1]))
+                    # p4 = (int(lt_rt_rb_lb[3][0]), int(lt_rt_rb_lb[3][1]))
+                    #
+                    # image = cv2.line(image, p1, p2, (0, 255, 0), 2)
+                    # image = cv2.line(image, p2, p3, (0, 255, 0), 2)
+                    # #new_image = cv2.line(new_image, p3, p4, (0, 255, 0), 2)
+                    # #new_image = cv2.line(new_image, p4, p1, (0, 255, 0), 2)
+                    #
+                    # cv2.imshow("max range", image)
+                    # cv2.waitKey(0)
                     # time1 = self.current_milli_time()
                     tag_msg = TransformStamped()
 
@@ -266,6 +277,47 @@ class Pipeline:
                     #rospy.loginfo(rot_matrix)
                     # handle pos
                     orientation = quaternion_from_matrix(new_mat)
+
+                    avg = (self.previousFour[0] + self.previousFour[1] + self.previousFour[2] + self.previousFour[
+                        3]) / 4
+
+                    dist_avg = (self.previousFour[0] + self.previousFour[1] + self.previousFour[2] + self.previousFour[3])
+                    rospy.loginfo(dist_avg)
+                    #rospy.loginfo(avg)
+                    if avg > 0.03 or dist_avg > 0.01:
+                        self.inMotion = True
+                        self.threshold = 0
+                        rospy.loginfo("MOVING")
+                    else:
+                        self.inMotion = False
+                        self.currThreshold = self.threshold
+                        rospy.loginfo("NOT MOVING")
+                    if self.initialized == False :
+                        self.initialized = True
+                        self.previousQuat = orientation
+                        self.prevTrans = math.sqrt(pow(ptvecs[0][0], 2) + pow(ptvecs[1][0],2) + pow(ptvecs[2][0], 2))
+                        diff = 0
+                        dist_diff = 0
+                    else :
+                        prevT = self.prevTrans
+                        currT = math.sqrt(pow(ptvecs[0][0], 2) + pow(ptvecs[1][0],2) + pow(ptvecs[2][0], 2))
+                        prevQ = pyQuaternion(axis=[self.previousQuat[0], self.previousQuat[1], self.previousQuat[2]], angle = self.previousQuat[3])
+                        currQ = pyQuaternion(axis=[orientation[0], orientation[1], orientation[2]], angle = orientation[3])
+                        diff = pyQuaternion.distance(prevQ, currQ)
+                        dist_diff = currT - prevT
+                        #rospy.loginfo(diff)
+                        if diff > self.currThreshold:
+                            self.previousQuat = orientation
+                        else:
+                            orientation = self.previousQuat
+
+                    self.previousFour[self.prevCounter] = diff
+                    self.prevTranslation[self.prevCounter] = dist_diff
+                    self.prevCounter += 1
+                    if self.prevCounter > 3:
+                        self.prevCounter = 0
+
+
                     transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
                     tag_msg.transform = transform
 
@@ -277,26 +329,23 @@ class Pipeline:
                     if not (ptvecs[2][0] > 0 and ptvecs[2][0] < 2.5):
                         continue
 
-                    self.median_count += 1
-                    self.median_filter[self.median_count % 3] = tag_msg
-
-                    rospy.loginfo(str(ptvecs[0][0]) + " " + str(ptvecs[1][0]) + " " + str(ptvecs[2][0]))
-
+                    # self.median_count += 1
+                    # self.median_filter[self.median_count % 3] = tag_msg
 
                     final_msg = tag_msg
-                    if self.median_count >= 3:
-                        if self.median_filter[0].transform.translation.z <= self.median_filter[1].transform.translation.z:
-                            if self.median_filter[0].transform.translation.z > self.median_filter[2].transform.translation.z:
-                                final_msg = self.median_filter[0]
-                            else:
-                                final_msg = self.median_filter[2]
-                        else:
-                            if self.median_filter[0].transform.translation.z < self.median_filter[2].transform.translation.z:
-                                final_msg = self.median_filter[0]
-                            else:
-                                final_msg = self.median_filter[2]
-                        self.tag_pub.publish(final_msg)
-                    elif ptvecs[2][0] > 0 and ptvecs[2][0] < 2.5:
+                    # if self.median_count >= 3:
+                    #     if self.median_filter[0].transform.translation.z <= self.median_filter[1].transform.translation.z:
+                    #         if self.median_filter[0].transform.translation.z > self.median_filter[2].transform.translation.z:
+                    #             final_msg = self.median_filter[0]
+                    #         else:
+                    #             final_msg = self.median_filter[2]
+                    #     else:
+                    #         if self.median_filter[0].transform.translation.z < self.median_filter[2].transform.translation.z:
+                    #             final_msg = self.median_filter[0]
+                    #         else:
+                    #             final_msg = self.median_filter[2]
+                    #     self.tag_pub.publish(final_msg)
+                    if ptvecs[2][0] > 0 and ptvecs[2][0] < 2.5:
                         self.tag_pub.publish(final_msg)
 
 
@@ -323,12 +372,10 @@ class Pipeline:
         return round(time.time() * 1000)
 
     def run(self):
-        rospy.Rate(60)
+        r = rospy.Rate(60)
         while not rospy.is_shutdown():
             self.update_current_image()
-
         rospy.spin()
-
 
 
 if __name__ == '__main__':
