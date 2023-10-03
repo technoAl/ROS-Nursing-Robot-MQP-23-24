@@ -32,15 +32,7 @@ class Pipeline:
 
         ### Initialize node, name it 'lab2'
         rospy.init_node('pipeline')
-
-        ### Tell ROS that this node publishes Twist messages on the '/cmd_vel' topic
-        self.tag_pub = rospy.Publisher('/april/calibration_box', TransformStamped, queue_size=1)
-
-        # rospy.Subscriber('/camera/color/camera_info', CameraInfo, self.update_intrinsics)
-
-        # rospy.Subscriber('/camera/color/image_raw', Image, self.update_current_image, queue_size=1)
-
-        self.pipeline_rate = 0
+          self.pipeline_rate = 0
 
         self.current_image = 0
         self.intrinsics = 0
@@ -81,6 +73,9 @@ class Pipeline:
 
         self.median_filter = [TransformStamped(), TransformStamped(), TransformStamped()]
         self.median_count = 0
+
+        self.listener = tf.TransformListener()
+        self.br = tf.TransformBroadcaster()
         #
         rospy.sleep(1)
 
@@ -299,14 +294,7 @@ class Pipeline:
                     # cv2.imshow("max range", image)
                     # cv2.waitKey(0)
                     # time1 = self.current_milli_time()
-                    tag_msg = TransformStamped()
 
-                    # Header
-                    generic_header = Header()
-                    generic_header.stamp = rospy.Time.now()
-                    generic_header.frame_id = "map"
-                    tag_msg.header = generic_header
-                    tag_msg.child_frame_id = "tag_trans"
 
                     # Make 2 Pose w/ vectors
 
@@ -326,55 +314,15 @@ class Pipeline:
                     # handle pos
                     orientation = quaternion_from_matrix(new_mat)
 
-                    orientation = self.filter_readings(orientation, ptvecs)
+                    #orientation = self.filter_readings(orientation, ptvecs)
 
 
                     transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
-                    tag_msg.transform = transform
 
-                    br = tf.TransformBroadcaster()
-                    br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (
+
+                    self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (
                     transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
                                      rospy.Time.now(), "calibration_box", "camera")
-
-                    if not (ptvecs[2][0] > 0 and ptvecs[2][0] < 2.5):
-                        continue
-
-                    # self.median_count += 1
-                    # self.median_filter[self.median_count % 3] = tag_msg
-
-                    final_msg = tag_msg
-                    # if self.median_count >= 3:
-                    #     if self.median_filter[0].transform.translation.z <= self.median_filter[1].transform.translation.z:
-                    #         if self.median_filter[0].transform.translation.z > self.median_filter[2].transform.translation.z:
-                    #             final_msg = self.median_filter[0]
-                    #         else:
-                    #             final_msg = self.median_filter[2]
-                    #     else:
-                    #         if self.median_filter[0].transform.translation.z < self.median_filter[2].transform.translation.z:
-                    #             final_msg = self.median_filter[0]
-                    #         else:
-                    #             final_msg = self.median_filter[2]
-                    #     self.tag_pub.publish(final_msg)
-                    if ptvecs[2][0] > 0 and ptvecs[2][0] < 2.5:
-                        self.tag_pub.publish(final_msg)
-
-
-
-                    # time2 = self.current_milli_time()
-                    # rospy.loginfo("Make Time " + str(time2 - time1))
-                    # rospy.loginfo(ptvecs[2][0])
-                    # if ptvecs[2][0] > 0 and ptvecs[2][0] < 2.5:
-                    #     # rospy.loginfo(str(ptvecs[0][0]) + " " + str(ptvecs[1][0]) + " " + str(ptvecs[2][0]))
-                    #     # rospy.loginfo(str(ptvecs[0]) + " " + str(ptvecs[1]) + " " + ptvecs[2])
-                    #     # time1 = self.current_milli_time()
-                    #
-                    #
-                    #     self.tag_pub.publish(tag_msg)
-                    #     # time2 = self.current_milli_time()
-                    #     # rospy.loginfo("Publish Time " + str(time2 - time1))
-                    #     self.pipeline_rate += 1
-                    #     # rospy.loginfo(self.current_milli_time()-self.tim)
 
                 # imgpts, jac = cv2.projectPoints(opoints, prvecs, ptvecs, intrinsics_mat)
                 # draw_boxes(new_image, imgpts, edges)
