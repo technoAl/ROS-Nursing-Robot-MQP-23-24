@@ -74,7 +74,6 @@ class Pipeline:
         self.initialized = False
         self.previousQuat = [0, 0, 0, 0]
         self.previousFour = [0, 0, 0, 0]
-        self.prevTranslation = [0, 0, 0, 0]
         self.prevCounter = 0
         self.inMotion = False
         self.prevTrans = 0
@@ -152,49 +151,53 @@ class Pipeline:
         self.count += 1
         rospy.sleep(2)
 
-    def filter_readings(self, orientation, ptvecs):
-        rot_avg = (self.previousFour[0] + self.previousFour[1] + self.previousFour[2] + self.previousFour[
-            3]) / 4
-        #dist_avg = (self.previousFour[0] + self.previousFour[1] + self.previousFour[2] + self.previousFour[3])
-        #rospy.loginfo(dist_avg)
-        #rospy.loginfo(rot_avg)
-        if self.inMotion:
-            if rot_avg < 0.004:
-                self.inMotion = False
-                currThreshold = self.threshold
-                rospy.loginfo("NOT MOVING")
-            else:
-                currThreshold = 0
-        else:
-            if rot_avg > 0.04:
-                self.inMotion = True
-                currThreshold = 0
-                rospy.loginfo("MOVING")
-            else:
-                currThreshold = self.threshold
+    def filter_readings(self, orientation, distance):
+        rot_avg = sum(self.previousFour) / 4
+        distance = math.sqrt(math.pow(abs(distance[0][0]), 2) + pow(abs(distance[1][0]), 2) + pow(distance[2][0], 2))
+        #rospy.loginfo(distance)
+        still_thresh = 0.03 * distance
+        move_thresh = 0.15 * distance
+        threshold = 0.075 * distance
+
         if not self.initialized:
             self.initialized = True
             self.previousQuat = orientation
-            #self.prevTrans = math.sqrt(pow(ptvecs[0][0], 2) + pow(ptvecs[1][0], 2) + pow(ptvecs[2][0], 2))
             diff = 0
-            #dist_diff = 0
         else:
-            #prevT = self.prevTrans
-            #currT = math.sqrt(pow(ptvecs[0][0], 2) + pow(ptvecs[1][0], 2) + pow(ptvecs[2][0], 2))
             prevQ = pyQuaternion(axis=[self.previousQuat[0], self.previousQuat[1], self.previousQuat[2]],
                                  angle=self.previousQuat[3])
             currQ = pyQuaternion(axis=[orientation[0], orientation[1], orientation[2]], angle=orientation[3])
             diff = pyQuaternion.distance(prevQ, currQ)
-            #dist_diff = currT - prevT
-            if diff > currThreshold:
+            if diff > self.currThreshold:
+                #orientation[0] = (self.previousQuat[0] + orientation[0]) / 2
+                #orientation[1] = (self.previousQuat[1] + orientation[1]) / 2
+                #orientation[2] = (self.previousQuat[2] + orientation[2]) / 2
+                #orientation[3] = (self.previousQuat[3] + orientation[3]) / 2
                 self.previousQuat = orientation
-                if not self.inMotion:
-                    rospy.loginfo(diff)
             else:
+                #if self.prevCounter == 3 :
+                #    self.previousQuat = orientation
+                #else:
                 orientation = self.previousQuat
 
+
+        if self.inMotion:
+            if rot_avg < still_thresh:
+                self.inMotion = False
+                self.currThreshold = threshold
+                rospy.loginfo("NOT MOVING")
+            else:
+                self.currThreshold = 0
+        else:
+            if rot_avg > move_thresh:
+                self.inMotion = True
+                self.currThreshold = 0
+                rospy.loginfo("MOVING")
+            else:
+                self.currThreshold = threshold
+                #rospy.loginfo(sum(self.previousFour) / len(self.previousFour))
+
         self.previousFour[self.prevCounter] = diff
-        #self.prevTranslation[self.prevCounter] = dist_diff
         self.prevCounter += 1
         if self.prevCounter > 3:
             self.prevCounter = 0
