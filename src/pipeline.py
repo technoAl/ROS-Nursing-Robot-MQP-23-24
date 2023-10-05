@@ -14,6 +14,9 @@ import time
 from tf.transformations import quaternion_from_euler, quaternion_from_matrix
 import tf
 from pyquaternion import Quaternion as pyQuaternion
+from std_msgs.msg import Float32
+import statistics
+
 
 
 def object_points(tag_size):
@@ -32,11 +35,11 @@ class Pipeline:
 
         ### Initialize node, name it 'lab2'
         rospy.init_node('pipeline')
-          self.pipeline_rate = 0
+        self.pipeline_rate = 0
 
         self.current_image = 0
         self.intrinsics = 0
-
+        self.plot_publisher = rospy.Publisher('/plot/value', Float32, queue_size=10)
         # camera setup through pyrealsense2
         self.rspipeline = rs.pipeline()
         self.rsconfig = rs.config()
@@ -70,6 +73,13 @@ class Pipeline:
         self.inMotion = False
         self.prevTrans = 0
         self.threshold = 0.03
+
+        # use for normal distribution
+        # self.rolling_values = np.zeros(20)
+        # self.rolling_index = 0
+        
+        # use for entropy
+        self.rolling_values = []
 
         self.median_filter = [TransformStamped(), TransformStamped(), TransformStamped()]
         self.median_count = 0
@@ -147,7 +157,73 @@ class Pipeline:
         rospy.sleep(2)
 
     def filter_readings(self, orientation, distance):
+        
+        '''
+        if rolling_index == 0:
+            rolling_values[self.rolling_index] = (orientaiton, distance)
+            index = index + 1
+        else:
+            
+            rolling_values[self.rolling_index] = (orientation, distance)
+            #rollingValues.append((orientation, distance))
+        '''
+        q = pyQuaternion(axis=[orientation[0], orientation[1], orientation[2]], angle=orientation[3])
+        self.rolling_values.append((q, distance))
+        
+        if len(self.rolling_values) < 2:
+            return orientation
+        else:
+
+            if len(self.rolling_values) > 20:
+                self.rolling_values.pop(0)
+            avg = []
+            for i in range(len(self.rolling_values)):
+                
+                sum = 0
+
+                for j in range(len(self.rolling_values)):
+                    sum = sum + pyQuaternion.distance(self.rolling_values[i][0], self.rolling_values[j][0])
+
+                avg.append(sum/len(self.rolling_values))
+                         
+            
+            avg = np.array(avg)
+            median = np.median(avg)
+            index = 0
+            for i in range(len(avg)):
+                if avg[i] == median:
+                    index = i
+                    rospy.loginfo(i)
+                    break
+            '''
+            sorted_avg = sorted(avg)
+            index = int(len(sorted_avg) / 2)
+            
+            mid_points = []
+            mid_points.append(rolling_values.get(index - 1))
+            mid_points.append(rolling_values.get(index))
+            mid_points.append(rolling_values.get(index + 1))
+            for key, value in avg_hash.items():
+                rospy.loginfo(value)
+                if value == median:
+                    rospy.loginfo("here")
+                    index = key
+            '''             
+            msg = Float32()
+            msg.data = median
+            self.plot_publisher.publish(msg)
+
+            return self.rolling_values[index][0]
+
+
+        '''
+        for q in rollingValues:
+            quat = q[0]
+            quat = pyQuaternion(axis=quat[0])
+        '''
+        '''
         rot_avg = sum(self.previousFour) / 4
+        self.plot_publisher.publish(rot_avg)
         distance = math.sqrt(math.pow(abs(distance[0][0]), 2) + pow(abs(distance[1][0]), 2) + pow(distance[2][0], 2))
         #rospy.loginfo(distance)
         still_thresh = 0.03 * distance
@@ -196,7 +272,8 @@ class Pipeline:
         self.prevCounter += 1
         if self.prevCounter > 3:
             self.prevCounter = 0
-        return orientation
+        '''
+
 
     # image as image message
     def pipeline(self, image):
@@ -314,7 +391,7 @@ class Pipeline:
                     # handle pos
                     orientation = quaternion_from_matrix(new_mat)
 
-                    #orientation = self.filter_readings(orientation, ptvecs)
+                    orientation = self.filter_readings(orientation, ptvecs)
 
 
                     transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
@@ -332,6 +409,7 @@ class Pipeline:
 
     def run(self):
         r = rospy.Rate(60)
+
         while not rospy.is_shutdown():
             self.update_current_image()
         rospy.spin()
