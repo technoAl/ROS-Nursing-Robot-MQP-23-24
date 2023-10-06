@@ -156,27 +156,39 @@ class Pipeline:
         self.count += 1
         rospy.sleep(2)
 
-    def filter_readings(self, orientation, distance):
+    def filter_readings(self, orientation):
         
-        '''
-        if rolling_index == 0:
-            rolling_values[self.rolling_index] = (orientaiton, distance)
-            index = index + 1
-        else:
+        #q = pyQuaternion(axis=[orientation[0], orientation[1], orientation[2]], angle=orientation[3])
+
+        
+        self.rolling_values.append(q)
+        if len(self.rolling_values) > 10:
+            self.rolling_values.pop(0)
+        
+        sum_x, sum_y, sum_z = 0, 0, 0
+        
+        for q in self.rolling_values:
+            x = q[0]
+            y = q[1]
+            z = q[2]
+            w = q[3]
             
-            rolling_values[self.rolling_index] = (orientation, distance)
-            #rollingValues.append((orientation, distance))
-        '''
-        q = pyQuaternion(axis=[orientation[0], orientation[1], orientation[2]], angle=orientation[3])
-        self.rolling_values.append((q, distance))
+            sum_x = sum_x + w*x
+            sum_y = sum_y + w*y 
+            sum_z = sum_z + w*z
         
+         
+
+        '''
         if len(self.rolling_values) < 2:
             return orientation
         else:
 
-            if len(self.rolling_values) > 20:
+            if len(self.rolling_values) > 10:
                 self.rolling_values.pop(0)
+
             avg = []
+            avg_hash = {}
             for i in range(len(self.rolling_values)):
                 
                 sum = 0
@@ -185,17 +197,11 @@ class Pipeline:
                     sum = sum + pyQuaternion.distance(self.rolling_values[i][0], self.rolling_values[j][0])
 
                 avg.append(sum/len(self.rolling_values))
-                         
+                avg_hash[i] = avg
+
+            median = statistics.median(avg)
+        
             
-            avg = np.array(avg)
-            median = np.median(avg)
-            index = 0
-            for i in range(len(avg)):
-                if avg[i] == median:
-                    index = i
-                    rospy.loginfo(i)
-                    break
-            '''
             sorted_avg = sorted(avg)
             index = int(len(sorted_avg) / 2)
             
@@ -203,78 +209,23 @@ class Pipeline:
             mid_points.append(rolling_values.get(index - 1))
             mid_points.append(rolling_values.get(index))
             mid_points.append(rolling_values.get(index + 1))
+            
+
+    
+
             for key, value in avg_hash.items():
-                rospy.loginfo(value)
-                if value == median:
-                    rospy.loginfo("here")
+                if value == median:if condition:
+                    pass
                     index = key
-            '''             
+                
+
             msg = Float32()
             msg.data = median
             self.plot_publisher.publish(msg)
+            rospy.loginfo(index)
 
             return self.rolling_values[index][0]
-
-
         '''
-        for q in rollingValues:
-            quat = q[0]
-            quat = pyQuaternion(axis=quat[0])
-        '''
-        '''
-        rot_avg = sum(self.previousFour) / 4
-        self.plot_publisher.publish(rot_avg)
-        distance = math.sqrt(math.pow(abs(distance[0][0]), 2) + pow(abs(distance[1][0]), 2) + pow(distance[2][0], 2))
-        #rospy.loginfo(distance)
-        still_thresh = 0.03 * distance
-        move_thresh = 0.15 * distance
-        threshold = 0.075 * distance
-
-        if not self.initialized:
-            self.initialized = True
-            self.previousQuat = orientation
-            diff = 0
-        else:
-            prevQ = pyQuaternion(axis=[self.previousQuat[0], self.previousQuat[1], self.previousQuat[2]],
-                                 angle=self.previousQuat[3])
-            currQ = pyQuaternion(axis=[orientation[0], orientation[1], orientation[2]], angle=orientation[3])
-            diff = pyQuaternion.distance(prevQ, currQ)
-            if diff > self.currThreshold:
-                #orientation[0] = (self.previousQuat[0] + orientation[0]) / 2
-                #orientation[1] = (self.previousQuat[1] + orientation[1]) / 2
-                #orientation[2] = (self.previousQuat[2] + orientation[2]) / 2
-                #orientation[3] = (self.previousQuat[3] + orientation[3]) / 2
-                self.previousQuat = orientation
-            else:
-                #if self.prevCounter == 3 :
-                #    self.previousQuat = orientation
-                #else:
-                orientation = self.previousQuat
-
-
-        if self.inMotion:
-            if rot_avg < still_thresh:
-                self.inMotion = False
-                self.currThreshold = threshold
-                rospy.loginfo("NOT MOVING")
-            else:
-                self.currThreshold = 0
-        else:
-            if rot_avg > move_thresh:
-                self.inMotion = True
-                self.currThreshold = 0
-                rospy.loginfo("MOVING")
-            else:
-                self.currThreshold = threshold
-                #rospy.loginfo(sum(self.previousFour) / len(self.previousFour))
-
-        self.previousFour[self.prevCounter] = diff
-        self.prevCounter += 1
-        if self.prevCounter > 3:
-            self.prevCounter = 0
-        '''
-
-
     # image as image message
     def pipeline(self, image):
         # height = image.height
@@ -391,7 +342,7 @@ class Pipeline:
                     # handle pos
                     orientation = quaternion_from_matrix(new_mat)
 
-                    orientation = self.filter_readings(orientation, ptvecs)
+                    #orientation = self.filter_readings(orientation, ptvecs)
 
 
                     transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
