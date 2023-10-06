@@ -161,7 +161,7 @@ class Pipeline:
         #q = pyQuaternion(axis=[orientation[0], orientation[1], orientation[2]], angle=orientation[3])
 
         
-        self.rolling_values.append(q)
+        self.rolling_values.append(orientation)
         if len(self.rolling_values) > 10:
             self.rolling_values.pop(0)
         
@@ -187,6 +187,7 @@ class Pipeline:
         new_y = avg_y / new_w
         new_z = avg_z / new_w
 
+        return (new_x, new_y, new_z, new_w)
 
 
         '''
@@ -352,7 +353,7 @@ class Pipeline:
                     # handle pos
                     orientation = quaternion_from_matrix(new_mat)
 
-                    #orientation = self.filter_readings(orientation, ptvecs)
+                    orientation = self.filter_readings(orientation)
 
 
                     transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
