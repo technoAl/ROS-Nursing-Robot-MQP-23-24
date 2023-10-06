@@ -11,7 +11,7 @@ if __name__ == '__main__':
     rospy.init_node('unity_publisher')
     listener = tf.TransformListener()
 
-    adjust_pub = rospy.Publisher('/objects/adjust', TransformStamped, queue_size=1)
+    #adjust_pub = rospy.Publisher('/objects/adjust', TransformStamped, queue_size=1)
     camera_pub = rospy.Publisher('/objects/camera', TransformStamped, queue_size=1)
     cube_pub = rospy.Publisher('/objects/grey_cube', TransformStamped, queue_size=1)
     can_pub = rospy.Publisher('/objects/corn_can', TransformStamped, queue_size=1)
