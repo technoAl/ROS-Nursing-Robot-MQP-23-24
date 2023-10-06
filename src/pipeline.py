@@ -86,6 +86,7 @@ class Pipeline:
 
         self.listener = tf.TransformListener()
         self.br = tf.TransformBroadcaster()
+        self.br.sendTransform((0, 0, 0), tf.transformations.quaternion_from_euler(0, 0, 0), rospy.Time.now(), "adjust", "world")
         #
         rospy.sleep(1)
 
