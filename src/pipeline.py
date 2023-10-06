@@ -35,6 +35,9 @@ class Pipeline:
 
         ### Initialize node, name it 'lab2'
         rospy.init_node('pipeline')
+
+        self.br = tf.TransformBroadcaster()
+
         self.pipeline_rate = 0
 
         self.current_image = 0
@@ -85,9 +88,10 @@ class Pipeline:
         self.median_count = 0
 
         self.listener = tf.TransformListener()
-        self.br = tf.TransformBroadcaster()
-        self.br.sendTransform((0, 0, 0), tf.transformations.quaternion_from_euler(0, 0, 0), rospy.Time.now(), "adjust", "world")
-        #
+        rospy.sleep(2)
+        self.br.sendTransform((0, 0, 0), tf.transformations.quaternion_from_euler(0, 0, 0), rospy.Time.now(), "adjust",
+                              "world")
+
         rospy.sleep(1)
 
     def update_current_image(self):

@@ -7,6 +7,7 @@ from geometry_msgs.msg import PoseStamped, Point, Pose, Quaternion, TransformSta
 from std_msgs.msg import Header
 
 if __name__ == '__main__':
+    rospy.sleep(5)
     rospy.init_node('unity_publisher')
     listener = tf.TransformListener()
 
@@ -26,7 +27,7 @@ if __name__ == '__main__':
         generic_header.frame_id = "world"
         tag_msg.header = generic_header
 
-        (adjust_trans, adjust_rot) = listener.lookupTransform('/world', '/adjust', rospy.Time(0))
+        #(adjust_trans, adjust_rot) = listener.lookupTransform('/world', '/adjust', rospy.Time(0))
 
         try:
             (camera_trans, camera_rot) = listener.lookupTransform('/world', '/camera', rospy.Time(0))
@@ -35,7 +36,8 @@ if __name__ == '__main__':
             tag_msg.transform = transform
             camera_pub.publish(tag_msg)
         except:
-            rospy.logwarn("No Camera Transform")
+            #rospy.logwarn("No Camera Transform")
+            pass
 
         try:
             (can_trans, can_rot) = listener.lookupTransform('/world', '/corn_can_center', rospy.Time(0))
@@ -44,7 +46,8 @@ if __name__ == '__main__':
             tag_msg.transform = transform
             can_pub.publish(tag_msg)
         except:
-            rospy.logwarn("No Corn Can Transform")
+            #rospy.logwarn("No Corn Can Transform")
+            pass
 
         try:
             (cube_trans, cube_rot) = listener.lookupTransform('/world', '/calibration_box_center', rospy.Time(0))
@@ -54,6 +57,7 @@ if __name__ == '__main__':
             tag_msg.transform = transform
             cube_pub.publish(tag_msg)
         except:
-            rospy.logwarn("No Grey Cube")
+            #rospy.logwarn("No Grey Cube")
+            pass
 
 

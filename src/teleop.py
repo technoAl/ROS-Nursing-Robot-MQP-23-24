@@ -49,6 +49,8 @@ if __name__ == '__main__':
             z += 0.001
         elif key == 'e':
             z -= 0.001
+        # elif key == ' ':
+        #     rospy.signal_shutdown("Interrupt")
 
         br.sendTransform(
             (x, y, z), tf.transformations.quaternion_from_euler(0, 0, 0),

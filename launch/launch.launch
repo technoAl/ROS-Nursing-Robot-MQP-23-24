@@ -11,5 +11,6 @@
     <node pkg="tf" type="static_transform_publisher" name="calibration_box_center" args="0 0 -0.026 0 0 0 calibration_box calibration_box_center 100" />
     <node pkg="tf" type="static_transform_publisher" name="corn_can_center" args="0 0 -0.056 0 0 0 corn_can corn_can_center 100" />
     <node name="unity_publisher" pkg="ROS-Nursing-Robot-MQP-23-24" type="unity_publisher.py" output="screen" />
+    <node name="teleop" pkg="ROS-Nursing-Robot-MQP-23-24" type="teleop.py" output="screen" />
     <node type="rviz" name="rviz" pkg="rviz" args="-d $(find ROS-Nursing-Robot-MQP-23-24)/rviz/rviz.rviz"/>
  </launch>
