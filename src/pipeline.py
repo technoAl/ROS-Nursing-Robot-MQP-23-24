@@ -177,7 +177,17 @@ class Pipeline:
             sum_y = sum_y + w*y 
             sum_z = sum_z + w*z
         
-         
+        avg_x = sum_x / len(self.rolling_values)
+        avg_y = sum_y / len(self.rolling_values)
+        avg_z = sum_z / len(self.rolling_values)
+
+        new_w = pow((pow(avg_x , 2) + pow(avg_y, 2) + pow(avg_z, 2)) , 0.5)
+
+        new_x = avg_x / new_w
+        new_y = avg_y / new_w
+        new_z = avg_z / new_w
+
+
 
         '''
         if len(self.rolling_values) < 2:
