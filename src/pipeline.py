@@ -83,6 +83,7 @@ class Pipeline:
 
         self.median_filter = [TransformStamped(), TransformStamped(), TransformStamped()]
         self.median_count = 0
+        self.still_count = 5
 
         self.listener = tf.TransformListener()
         self.br = tf.TransformBroadcaster()
@@ -160,36 +161,64 @@ class Pipeline:
         
         #q = pyQuaternion(axis=[orientation[0], orientation[1], orientation[2]], angle=orientation[3])
 
-        
         self.rolling_values.append(orientation)
+
         if len(self.rolling_values) > 10:
             self.rolling_values.pop(0)
         
         sum_x, sum_y, sum_z = 0, 0, 0
-        
-        for q in self.rolling_values:
-            x = q[0]
-            y = q[1]
-            z = q[2]
-            w = q[3]
-            
-            sum_x = sum_x + w*x
-            sum_y = sum_y + w*y 
-            sum_z = sum_z + w*z
-        
-        avg_x = sum_x / len(self.rolling_values)
-        avg_y = sum_y / len(self.rolling_values)
-        avg_z = sum_z / len(self.rolling_values)
 
-        new_w = pow((pow(avg_x , 2) + pow(avg_y, 2) + pow(avg_z, 2)) , 0.5)
+        diff = 0
+        ignored = 0
+        for i in range(len(self.rolling_values)): # Calc distance amongst every quaternion to see if we are moving as well as average out quaternions for filter
 
-        new_x = avg_x / new_w
-        new_y = avg_y / new_w
-        new_z = avg_z / new_w
+            sum = 0
 
-        return (new_x, new_y, new_z, new_w)
+            x = self.rolling_values[i][0]
+            y = self.rolling_values[i][1]
+            z = self.rolling_values[i][2]
+            w = self.rolling_values[i][3]
 
+            if (self.still_count < len(self.rolling_values)) & (i < len(self.rolling_values) - 1) & (len(self.rolling_values) > 2):
+                rospy.loginfo("RID OF VALUE")
+                ignored += 1
+                x = 0
+                y = 0
+                z = 0
+                w = 0
 
+            sum_x = sum_x + w * x
+            sum_y = sum_y + w * y
+            sum_z = sum_z + w * z
+
+            for j in range(len(self.rolling_values)):
+                q = pyQuaternion(axis=[self.rolling_values[i][0], self.rolling_values[i][1], self.rolling_values[i][2]], angle=self.rolling_values[i][3])
+                r = pyQuaternion(axis=[self.rolling_values[j][0], self.rolling_values[j][1], self.rolling_values[j][2]], angle=self.rolling_values[j][3])
+                sum = sum + pyQuaternion.distance(q, r)
+
+            avg = sum / len(self.rolling_values)
+            diff = diff + avg
+
+        diff = diff / len(self.rolling_values) # Average difference among quaternions
+
+        if (diff > 0.02): # If moving don't filter
+            rospy.loginfo("Moving")
+            self.still_count = 0
+            return orientation
+        else: # If we are still average out the quaternions
+            rospy.loginfo("Still")
+            self.still_count += 1
+            avg_x = sum_x / (len(self.rolling_values) - ignored)
+            avg_y = sum_y / (len(self.rolling_values) - ignored)
+            avg_z = sum_z / (len(self.rolling_values) - ignored)
+
+            new_w = pow((pow(avg_x , 2) + pow(avg_y, 2) + pow(avg_z, 2)) , 0.5)
+
+            new_x = avg_x / new_w
+            new_y = avg_y / new_w
+            new_z = avg_z / new_w
+
+            return (new_x, new_y, new_z, new_w)
         '''
         if len(self.rolling_values) < 2:
             return orientation
@@ -237,6 +266,15 @@ class Pipeline:
 
             return self.rolling_values[index][0]
         '''
+        # for q in self.rolling_values:
+        #     x = q[0]
+        #     y = q[1]
+        #     z = q[2]
+        #     w = q[3]
+        #
+        #     sum_x = sum_x + w*x
+        #     sum_y = sum_y + w*y
+        #     sum_z = sum_z + w*z
     # image as image message
     def pipeline(self, image):
         # height = image.height
