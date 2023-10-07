@@ -180,7 +180,7 @@ class Pipeline:
             w = self.rolling_values[i][3]
 
             if (self.still_count < len(self.rolling_values)) & (i < len(self.rolling_values) - 1) & (len(self.rolling_values) > 2):
-                rospy.loginfo("RID OF VALUE")
+                #rospy.loginfo("RID OF VALUE")
                 ignored += 1
                 x = 0
                 y = 0
@@ -202,11 +202,11 @@ class Pipeline:
         diff = diff / len(self.rolling_values) # Average difference among quaternions
 
         if (diff > 0.02): # If moving don't filter
-            rospy.loginfo("Moving")
+            #rospy.loginfo("Moving")
             self.still_count = 0
             return orientation
         else: # If we are still average out the quaternions
-            rospy.loginfo("Still")
+            #rospy.loginfo("Still")
             self.still_count += 1
             avg_x = sum_x / (len(self.rolling_values) - ignored)
             avg_y = sum_y / (len(self.rolling_values) - ignored)
