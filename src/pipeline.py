@@ -94,6 +94,14 @@ class Pipeline:
 
         rospy.sleep(1)
 
+        self.max_x = -np.inf
+        self.min_x = np.inf
+        self.max_y = -np.inf
+        self.min_y = np.inf
+        self.max_z = -np.inf
+        self.min_z = np.inf
+        self.count = 0
+
     def update_current_image(self):
 
         # # Start streaming
@@ -342,6 +350,7 @@ class Pipeline:
         detector = apriltag(family="tag36h11")
         detections = detector.detect(gray_image)  # , estimate_tag_pose=True, camera_params=PARAMS, tag_size=TAG_SIZE)
         # rospy.loginfo("Detector Time " + str(time2 - time1))
+
         if len(detections) > 0:
             for tag in detections:
                 if tag['id'] == 0:
@@ -372,8 +381,8 @@ class Pipeline:
                         #
                         # image = cv2.line(image, p1, p2, (0, 255, 0), 2)
                         # image = cv2.line(image, p2, p3, (0, 255, 0), 2)
-                        # #new_image = cv2.line(new_image, p3, p4, (0, 255, 0), 2)
-                        # #new_image = cv2.line(new_image, p4, p1, (0, 255, 0), 2)
+                        # image = cv2.line(image, p3, p4, (0, 255, 0), 2)
+                        # image = cv2.line(image, p4, p1, (0, 255, 0), 2)
                         #
                         # cv2.imshow("max range", image)
                         # cv2.waitKey(0)
@@ -386,8 +395,23 @@ class Pipeline:
                         transform = Transform()
                         transform.translation = Vector3(ptvecs[0][0], ptvecs[1][0], ptvecs[2][0])
 
+                        self.max_x = max(ptvecs[0][0], self.max_x)
+                        self.min_x = min(ptvecs[0][0], self.min_x)
+                        self.max_y = max(ptvecs[1][0], self.max_y)
+                        self.min_y = min(ptvecs[1][0], self.min_y)
+                        self. max_z = max(ptvecs[2][0], self.max_z)
+                        self.min_z = min(ptvecs[2][0], self.min_z)
+                        if self.count % 500 == 0:
+                            rospy.loginfo("X Dev: {} ".format(self.max_x + self.min_x))
+                            rospy.loginfo("Y Dev: {} ".format(self.max_y + self.min_y))
+                            rospy.loginfo("Z Dev: {} ".format(self.max_z + self.min_z))
+                            rospy.loginfo("X: {} ".format((self.max_x+self.min_x)/2))
+                            rospy.loginfo("Y: {} ".format((self.max_y+self.min_y)/2))
+                            rospy.loginfo("Z: {} ".format((self.max_z+self.min_z)/2))
+
                         rot_matrix,_ = cv2.Rodrigues(prvecs)
 
+                        self.count+=1
 
                         new_mat = np.zeros((4,4), np.float32)
                         for i in range(3):
