@@ -15,8 +15,9 @@ if __name__ == '__main__':
     camera_pub = rospy.Publisher('/objects/camera', TransformStamped, queue_size=1)
     cube_pub = rospy.Publisher('/objects/grey_cube', TransformStamped, queue_size=1)
     can_pub = rospy.Publisher('/objects/corn_can', TransformStamped, queue_size=1)
+    bottle_2_pub = rospy.Publisher('/objects/bottle_2', TransformStamped, queue_size=1)
 
-    rate = rospy.Rate(2.5)
+    rate = rospy.Rate(3)
     while not rospy.is_shutdown():
 
         tag_msg = TransformStamped()
@@ -58,6 +59,17 @@ if __name__ == '__main__':
             cube_pub.publish(tag_msg)
         except:
             #rospy.logwarn("No Grey Cube")
+            pass
+
+        try:
+            (bot_2_trans, bot_2_rot) = listener.lookupTransform('/world', '/bottle_2_center', rospy.Time(0))
+            transform = Transform()
+            transform.translation = Vector3(bot_2_trans[0], bot_2_trans[1], bot_2_trans[2])
+            transform.rotation = Quaternion(bot_2_rot[0], bot_2_rot[1], bot_2_rot[2], bot_2_rot[3])
+            tag_msg.transform = transform
+            bottle_2_pub.publish(tag_msg)
+        except:
+            # rospy.logwarn("No Bottle 2")
             pass
 
 

@@ -61,12 +61,12 @@ class Pipeline:
             rospy.loginfo("The demo requires Depth camera with Color sensor")
             exit(0)
 
-        self.rsconfig.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
+        #self.rsconfig.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
 
-        self.rsconfig.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
+        self.rsconfig.enable_stream(rs.stream.color, 1920, 1080, rs.format.bgr8, 30)
 
         ### Making robot go 10Hz
-        self.rate = rospy.Rate(60)
+        self.rate = rospy.Rate(30)
         self.count = 0
 
         self.initialized = False
@@ -107,28 +107,28 @@ class Pipeline:
                 # self.tim = self.current_milli_time()
                 frames = self.rspipeline.wait_for_frames()
                 # rospy.loginfo("Cam Time: " + str(self.current_milli_time() - self.tim))
-                depth_frame = frames.get_depth_frame()
+                #depth_frame = frames.get_depth_frame()
                 color_frame = frames.get_color_frame()
-                if not depth_frame or not color_frame:
-                    continue
+                # if not depth_frame or not color_frame:
+                #     continue
 
                 # Convert images to numpy arrays
-                depth_image = np.asanyarray(depth_frame.get_data())
+                #depth_image = np.asanyarray(depth_frame.get_data())
                 color_image = np.asanyarray(color_frame.get_data())
 
                 # Apply colormap on depth image (image must be converted to 8-bit per pixel first)
-                depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
+                #depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
 
-                depth_colormap_dim = depth_colormap.shape
-                color_colormap_dim = color_image.shape
+                # depth_colormap_dim = depth_colormap.shape
+                # color_colormap_dim = color_image.shape
 
                 # If depth and color resolutions are different, resize color image to match depth image for display
-                if depth_colormap_dim != color_colormap_dim:
-                    resized_color_image = cv2.resize(color_image, dsize=(depth_colormap_dim[1], depth_colormap_dim[0]),
-                                                     interpolation=cv2.INTER_AREA)
-                    images = np.hstack((resized_color_image, depth_colormap))
-                else:
-                    images = np.hstack((color_image, depth_colormap))
+                # if depth_colormap_dim != color_colormap_dim:
+                #     resized_color_image = cv2.resize(color_image, dsize=(depth_colormap_dim[1], depth_colormap_dim[0]),
+                #                                      interpolation=cv2.INTER_AREA)
+                #     images = np.hstack((resized_color_image, depth_colormap))
+                # else:
+                #     images = np.hstack((color_image, depth_colormap))
 
                 # Show images
                 self.pipeline(color_image)
@@ -302,17 +302,17 @@ class Pipeline:
 
         # cv2.imshow("header", new_image)
         # cv2.waitKey(0)
-
+        #
         # # closing all open windows
         # cv2.destroyAllWindows()
 
         # 1080 by 1920
         #   FocalLength: [1380.4628 1379.4309]
         #   PrincipalPoint: [956.5579 542.9203]
-        # fx = 1380.4628
-        # fy = 1379.4309
-        # cx = 956.5579
-        # cy = 542.9203
+        fx = 1380.4628
+        fy = 1379.4309
+        cx = 956.5579
+        cy = 542.9203
 
         # 480 by 640
         # fx = 629.0741
@@ -328,10 +328,10 @@ class Pipeline:
         # cx = 632.3028
         # cy = 343.9200
         # Camera 2
-        fx = 900.1325
-        fy = 900.2865
-        cx = 631.4351
-        cy = 342.4242
+        # fx = 900.1325
+        # fy = 900.2865
+        # cx = 631.4351
+        # cy = 342.4242
 
         intrinsics_mat = np.array([[fx, 0, cx],
                                    [0, fy, cy],
@@ -445,6 +445,44 @@ class Pipeline:
                             (transform.translation.x, transform.translation.y, transform.translation.z), (
                                 transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
                             rospy.Time.now(), "corn_can", "camera")
+
+                elif tag['id'] == 2:
+                    center = tag['center']
+                    lb_rb_rt_lt = tag['lb-rb-rt-lt']
+                    lt_rt_rb_lb = np.zeros((4, 2))
+                    for i in range(4):
+                        lt_rt_rb_lb[i] = lb_rb_rt_lt[3 - i]
+
+                    # time1 = self.current_milli_time()
+                    good, prvecs, ptvecs = cv2.solvePnP(obj_pts, lt_rt_rb_lb, intrinsics_mat, (),
+                                                        flags=cv2.SOLVEPNP_IPPE_SQUARE)
+                    # time2 = self.current_milli_time()
+                    # rospy.loginfo("Solver Time " + str(time2 - time1))
+
+                    if good:
+
+                        # handle rotation
+                        transform = Transform()
+                        transform.translation = Vector3(ptvecs[0][0], ptvecs[1][0], ptvecs[2][0])
+
+                        rot_matrix, _ = cv2.Rodrigues(prvecs)
+
+                        new_mat = np.zeros((4, 4), np.float32)
+                        for i in range(3):
+                            for j in range(3):
+                                new_mat[i][j] = rot_matrix[i][j]
+                        new_mat[3, 3] = 1
+                        # handle pos
+                        orientation = quaternion_from_matrix(new_mat)
+
+                        # orientation = self.filter_readings(orientation, ptvecs)
+
+                        transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
+
+                        self.br.sendTransform(
+                            (transform.translation.x, transform.translation.y, transform.translation.z), (
+                                transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
+                            rospy.Time.now(), "bottle_2", "camera")
 
                 # imgpts, jac = cv2.projectPoints(opoints, prvecs, ptvecs, intrinsics_mat)
                 # draw_boxes(new_image, imgpts, edges)
