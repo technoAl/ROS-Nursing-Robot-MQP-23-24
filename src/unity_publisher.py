@@ -17,6 +17,7 @@ if __name__ == '__main__':
     can_pub = rospy.Publisher('/objects/corn_can', TransformStamped, queue_size=1)
 
     rate = rospy.Rate(2.5)
+
     while not rospy.is_shutdown():
 
         tag_msg = TransformStamped()
