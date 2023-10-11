@@ -17,15 +17,6 @@ from pyquaternion import Quaternion as pyQuaternion
 from std_msgs.msg import Float32
 import statistics
 
-
-
-def object_points(tag_size):
-    return [[-tag_size / 2, tag_size / 2, 0.0],
-            [tag_size / 2, tag_size / 2, 0.0],
-            [tag_size / 2, -tag_size / 2, 0.0],
-            [-tag_size / 2, -tag_size / 2, 0.0]]
-
-
 class Pipeline:
 
     def __init__(self):
@@ -338,7 +329,7 @@ class Pipeline:
                                    [0, 0, 1]])  # elements from the K matrix
 
         TAG_SIZE = 0.025 #0.062 # Tag size from Step 1 in meters
-        obj_pts = np.array(object_points(TAG_SIZE))
+        obj_pts = np.array(self.object_points(TAG_SIZE))
         detector = apriltag(family="tag36h11")
         detections = detector.detect(gray_image)  # , estimate_tag_pose=True, camera_params=PARAMS, tag_size=TAG_SIZE)
         # rospy.loginfo("Detector Time " + str(time2 - time1))
@@ -487,16 +478,19 @@ class Pipeline:
                 # imgpts, jac = cv2.projectPoints(opoints, prvecs, ptvecs, intrinsics_mat)
                 # draw_boxes(new_image, imgpts, edges)
 
+    def object_points(self, tag_size):
+        return [[-tag_size / 2, tag_size / 2, 0.0],
+                [tag_size / 2, tag_size / 2, 0.0],
+                [tag_size / 2, -tag_size / 2, 0.0],
+                [-tag_size / 2, -tag_size / 2, 0.0]]
+
     def current_milli_time(self):
         return round(time.time() * 1000)
 
     def run(self):
-        r = rospy.Rate(60)
-
         while not rospy.is_shutdown():
             self.update_current_image()
         rospy.spin()
-
 
 if __name__ == '__main__':
     Pipeline().run()
