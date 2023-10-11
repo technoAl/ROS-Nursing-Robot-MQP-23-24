@@ -216,7 +216,10 @@ class Pipeline:
                 new_x = avg_x / new_w
                 new_y = avg_y / new_w
                 new_z = avg_z / new_w
-                return (new_x, new_y, new_z, new_w)
+
+                d = pow((pow(new_x , 2) + pow(new_y, 2) + pow(new_z, 2) + pow(new_w, 2)) , 0.5)
+
+                return (new_x, new_y, new_z, new_w)/d
         # for q in self.rolling_values:
         #     x = q[0]
         #     y = q[1]
@@ -343,17 +346,19 @@ class Pipeline:
                         #rospy.loginfo(rot_matrix)
                         # handle pos
                         orientation = quaternion_from_matrix(new_mat)
-                        try:
-                            orientation = self.filter_readings(orientation)
-                        except Error:
-                            pass
+                        
+                        orientation = self.filter_readings(orientation)
 
+                                                   
+                            
                         transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
 
 
                         self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (
-                        transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
-                                         rospy.Time.now(), "calibration_box", "camera")
+                            transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), "calibration_box", "camera")
+                                                   
+
+                       
 
                 elif tag['id'] == 1:
                     center = tag['center']
@@ -384,14 +389,18 @@ class Pipeline:
                         # handle pos
                         orientation = quaternion_from_matrix(new_mat)
 
+                    
                         orientation = self.filter_readings(orientation)
-
+                        
                         transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
 
                         self.br.sendTransform(
                             (transform.translation.x, transform.translation.y, transform.translation.z), (
-                                transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
-                            rospy.Time.now(), "corn_can", "camera")
+                                transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), "corn_can", "camera")
+
+                                                    
+                        
+    
 
                 # imgpts, jac = cv2.projectPoints(opoints, prvecs, ptvecs, intrinsics_mat)
                 # draw_boxes(new_image, imgpts, edges)

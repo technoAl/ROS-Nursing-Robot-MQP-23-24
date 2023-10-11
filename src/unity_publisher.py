@@ -16,7 +16,7 @@ if __name__ == '__main__':
     cube_pub = rospy.Publisher('/objects/grey_cube', TransformStamped, queue_size=1)
     can_pub = rospy.Publisher('/objects/corn_can', TransformStamped, queue_size=1)
 
-    rate = rospy.Rate(60.0)
+    rate = rospy.Rate(15.0)
     while not rospy.is_shutdown():
 
         tag_msg = TransformStamped()
