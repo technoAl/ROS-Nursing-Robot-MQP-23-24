@@ -142,8 +142,8 @@ class Pipeline:
         self.rate = rospy.Rate(60)
         self.count = 0
 
-        #self.boxVal = previousReadings()
-        #self.canVal = previousReadings()
+        self.boxVal = previousReadings()
+        self.canVal = previousReadings()
 
         self.median_filter = [TransformStamped(), TransformStamped(), TransformStamped()]
         self.median_count = 0
@@ -350,7 +350,7 @@ class Pipeline:
                         # handle pos
                         orientation = quaternion_from_matrix(new_mat)
                         
-                        #orientation = self.boxVal.filter_readings(orientation)
+                        orientation = self.boxVal.filter_readings(orientation)
 
                         transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
 
@@ -390,7 +390,7 @@ class Pipeline:
                         # handle pos
                         orientation = quaternion_from_matrix(new_mat)
 
-                        #orientation = self.canVal.filter_readings(orientation)
+                        orientation = self.canVal.filter_readings(orientation)
                         
                         transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
 
