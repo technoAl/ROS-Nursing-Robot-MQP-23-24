@@ -25,7 +25,80 @@ def object_points(tag_size):
             [tag_size / 2, -tag_size / 2, 0.0],
             [-tag_size / 2, -tag_size / 2, 0.0]]
 
+class previousReadings:
+    def __init__(self):
+        self.initialized = False
+        self.previousQuat = [0, 0, 0, 0]
+        self.previousFour = [0, 0, 0, 0]
+        self.prevCounter = 0
+        self.inMotion = False
+        self.prevTrans = 0
+        self.threshold = 0.03
 
+        # use for normal distribution
+        # self.rolling_values = np.zeros(20)
+        # self.rolling_index = 0
+
+        # use for entropy
+        self.rolling_values = []
+    def filter_readings(self, orientation):
+        self.rolling_values.append(orientation)
+
+        if len(self.rolling_values) > 16:
+            self.rolling_values.pop(0)
+
+        sum_x, sum_y, sum_z = 0, 0, 0
+        diff = 0
+        avgs = []
+        for i in range(len(self.rolling_values)): # Calc distance amongst every quaternion to see if we are moving as well as average out quaternions for filter
+
+            sum = 0
+
+            for j in range(len(self.rolling_values)):
+                q = pyQuaternion(axis=[self.rolling_values[i][0], self.rolling_values[i][1], self.rolling_values[i][2]], angle=self.rolling_values[i][3])
+                r = pyQuaternion(axis=[self.rolling_values[j][0], self.rolling_values[j][1], self.rolling_values[j][2]], angle=self.rolling_values[j][3])
+                sum = sum + pyQuaternion.distance(q, r)
+
+            avg = round(sum / len(self.rolling_values), 5)
+            avgs.append(avg)
+            diff = diff + avg
+
+        avg_diff = diff / len(self.rolling_values) # Average difference among quaternions
+
+        sorted_avgs = sorted(avgs)
+        if len(avgs) < 7:
+            return orientation
+        else:
+            if (avg_diff > 0.035): # If moving use median filter
+                #rospy.loginfo("Moving")
+                #self.still_count = 0
+                return orientation
+            else: # If we are still, average out the quaternions
+                #rospy.loginfo("Still")
+                #rospy.loginfo(avg_diff)
+                for k in range(len(sorted_avgs) - 6):
+                    index = avgs.index(sorted_avgs[k])
+                    x = self.rolling_values[index][0]
+                    y = self.rolling_values[index][1]
+                    z = self.rolling_values[index][2]
+                    w = self.rolling_values[index][3]
+                    sum_x = sum_x + w * x
+                    sum_y = sum_y + w * y
+                    sum_z = sum_z + w * z
+
+                avg_x = sum_x / (len(self.rolling_values) - 6)
+                avg_y = sum_y / (len(self.rolling_values) - 6)
+                avg_z = sum_z / (len(self.rolling_values) - 6)
+
+                new_w = pow((pow(avg_x , 2) + pow(avg_y, 2) + pow(avg_z, 2)) , 0.5)
+
+                new_x = avg_x / new_w
+                new_y = avg_y / new_w
+                new_z = avg_z / new_w
+
+                d = pow((pow(new_x , 2) + pow(new_y, 2) + pow(new_z, 2) + pow(new_w, 2)) , 0.5)
+
+                return (new_x, new_y, new_z, new_w)/d
 class Pipeline:
 
     def __init__(self):
@@ -69,20 +142,8 @@ class Pipeline:
         self.rate = rospy.Rate(60)
         self.count = 0
 
-        self.initialized = False
-        self.previousQuat = [0, 0, 0, 0]
-        self.previousFour = [0, 0, 0, 0]
-        self.prevCounter = 0
-        self.inMotion = False
-        self.prevTrans = 0
-        self.threshold = 0.03
-
-        # use for normal distribution
-        # self.rolling_values = np.zeros(20)
-        # self.rolling_index = 0
-        
-        # use for entropy
-        self.rolling_values = []
+        #self.boxVal = previousReadings()
+        #self.canVal = previousReadings()
 
         self.median_filter = [TransformStamped(), TransformStamped(), TransformStamped()]
         self.median_count = 0
@@ -162,64 +223,6 @@ class Pipeline:
         self.count += 1
         rospy.sleep(2)
 
-    def filter_readings(self, orientation):
-        self.rolling_values.append(orientation)
-
-        if len(self.rolling_values) > 16:
-            self.rolling_values.pop(0)
-
-        sum_x, sum_y, sum_z = 0, 0, 0
-        diff = 0
-        avgs = []
-        for i in range(len(self.rolling_values)): # Calc distance amongst every quaternion to see if we are moving as well as average out quaternions for filter
-
-            sum = 0
-
-            for j in range(len(self.rolling_values)):
-                q = pyQuaternion(axis=[self.rolling_values[i][0], self.rolling_values[i][1], self.rolling_values[i][2]], angle=self.rolling_values[i][3])
-                r = pyQuaternion(axis=[self.rolling_values[j][0], self.rolling_values[j][1], self.rolling_values[j][2]], angle=self.rolling_values[j][3])
-                sum = sum + pyQuaternion.distance(q, r)
-
-            avg = round(sum / len(self.rolling_values), 5)
-            avgs.append(avg)
-            diff = diff + avg
-
-        avg_diff = diff / len(self.rolling_values) # Average difference among quaternions
-
-        sorted_avgs = sorted(avgs)
-        if len(avgs) < 7:
-            return orientation
-        else:
-            if (avg_diff > 0.035): # If moving use median filter
-                #rospy.loginfo("Moving")
-                #self.still_count = 0
-                return orientation
-            else: # If we are still, average out the quaternions
-                #rospy.loginfo("Still")
-                #rospy.loginfo(avg_diff)
-                for k in range(len(sorted_avgs) - 6):
-                    index = avgs.index(sorted_avgs[k])
-                    x = self.rolling_values[index][0]
-                    y = self.rolling_values[index][1]
-                    z = self.rolling_values[index][2]
-                    w = self.rolling_values[index][3]
-                    sum_x = sum_x + w * x
-                    sum_y = sum_y + w * y
-                    sum_z = sum_z + w * z
-
-                avg_x = sum_x / (len(self.rolling_values) - 6)
-                avg_y = sum_y / (len(self.rolling_values) - 6)
-                avg_z = sum_z / (len(self.rolling_values) - 6)
-
-                new_w = pow((pow(avg_x , 2) + pow(avg_y, 2) + pow(avg_z, 2)) , 0.5)
-
-                new_x = avg_x / new_w
-                new_y = avg_y / new_w
-                new_z = avg_z / new_w
-
-                d = pow((pow(new_x , 2) + pow(new_y, 2) + pow(new_z, 2) + pow(new_w, 2)) , 0.5)
-
-                return (new_x, new_y, new_z, new_w)/d
         # for q in self.rolling_values:
         #     x = q[0]
         #     y = q[1]
@@ -347,10 +350,8 @@ class Pipeline:
                         # handle pos
                         orientation = quaternion_from_matrix(new_mat)
                         
-                        orientation = self.filter_readings(orientation)
+                        #orientation = self.boxVal.filter_readings(orientation)
 
-                                                   
-                            
                         transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
 
 
@@ -389,8 +390,7 @@ class Pipeline:
                         # handle pos
                         orientation = quaternion_from_matrix(new_mat)
 
-                    
-                        orientation = self.filter_readings(orientation)
+                        #orientation = self.canVal.filter_readings(orientation)
                         
                         transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
 
