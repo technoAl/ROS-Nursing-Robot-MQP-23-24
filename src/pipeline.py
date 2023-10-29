@@ -168,6 +168,7 @@ class Pipeline:
                 # lines 98 and 100 are used to test frame rate
                 # self.tim = self.current_milli_time()
                 frames = self.rspipeline.wait_for_frames()
+
                 # rospy.loginfo("Cam Time: " + str(self.current_milli_time() - self.tim))
                 depth_frame = frames.get_depth_frame()
                 color_frame = frames.get_color_frame()
