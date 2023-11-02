@@ -6,7 +6,7 @@ import tf
 from geometry_msgs.msg import PoseStamped, Point, Pose, Quaternion, TransformStamped, Vector3, Transform
 from std_msgs.msg import Header
 from tf.transformations import quaternion_from_euler, quaternion_from_matrix
-from tf.msg import tfMessage
+from tf2_msgs.msg import TFMessage
 from pyquaternion import Quaternion as pyQuaternion
 
 
@@ -31,7 +31,7 @@ if __name__ == '__main__':
     # can_pub = rospy.Publisher('/objects/corn_can', TransformStamped, queue_size=1)
     # bottle_2_pub = rospy.Publisher('/objects/bottle_2', TransformStamped, queue_size=1)
 
-    tf_pub = rospy.Publisher('/objects', tfMessage, queue_size=1)
+    tf_pub = rospy.Publisher('/objects', TFMessage, queue_size=1)
 
     base_quat = quaternion_from_euler(0.01, 0.01, 0.01)
     prev_cube_trans = Vector3(0, 0, 0)
@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
     rate = rospy.Rate(5)
     while not rospy.is_shutdown():
-        tag_msg = tfMessage()
+        tag_msg = TFMessage()
 
         # Header
         generic_header = Header()
@@ -67,14 +67,15 @@ if __name__ == '__main__':
         try:
             (can_trans, can_rot) = listener.lookupTransform('/world', '/corn_can_center', rospy.Time(0))
             can_transform = TransformStamped()
+            transform = Transform()
             transform.translation = Vector3(can_trans[0], can_trans[1], can_trans[2])
             transform.rotation = Quaternion(can_rot[0], can_rot[1], can_rot[2], can_rot[3])
             can_transform.transform = transform
-            can_tranform.header = generic_header
-            can_transform.child_frame_id = "/corn_can"
+            can_transform.header = generic_header
+            can_transform.child_frame_id = "corn_can"
             if cumulative_distance(prev_can_trans, transform.translation, trans_tolerance, prev_can_rot, transform.rotation, rot_tolerance) or True:
                 #can_pub.publish(tag_msg)
-                tag_message.transforms.append(can_transform)
+                tag_msg.transforms.append(can_transform)
                 prev_can_trans = transform.translation
                 prev_can_rot = transform.rotation
 
@@ -85,6 +86,7 @@ if __name__ == '__main__':
         try:
             (cube_trans, cube_rot) = listener.lookupTransform('/world', '/grey_cube_center', rospy.Time(0))
             cube_transform = TransformStamped()
+            transform = Transform()
             transform.translation = Vector3(cube_trans[0], cube_trans[1], cube_trans[2])
             transform.rotation = Quaternion(cube_rot[0], cube_rot[1], cube_rot[2], cube_rot[3])
             cube_transform.transform = transform
@@ -92,17 +94,18 @@ if __name__ == '__main__':
             cube_transform.child_frame_id = "grey_cube"
             if cumulative_distance(prev_cube_trans, transform.translation, trans_tolerance, prev_cube_rot, transform.rotation, rot_tolerance) or True:
                 #cube_pub.publish(tag_msg)
-                tag_message.transforms.append(cube_transform)
+                tag_msg.transforms.append(cube_transform)
                 prev_cube_trans = transform.translation
                 prev_cube_rot = transform.rotation
 
-        except:
-            #rospy.logwarn(error)
+        except Exception as  e:
+            #rospy.logwarn(e)
             pass
 
         try:
             (bot_2_trans, bot_2_rot) = listener.lookupTransform('/world', '/bottle_2_center', rospy.Time(0))
             bot_transform = TransformStamped()
+            transform = Transform()
             transform.translation = Vector3(bot_2_trans[0], bot_2_trans[1], bot_2_trans[2])
             transform.rotation = Quaternion(bot_2_rot[0], bot_2_rot[1], bot_2_rot[2], bot_2_rot[3])
             bot_transform.transform = transform
@@ -110,12 +113,13 @@ if __name__ == '__main__':
             bot_transform.child_frame_id = "bottle_2"
             if cumulative_distance(prev_bottle_trans, transform.translation, trans_tolerance, prev_bottle_rot, transform.rotation, rot_tolerance) or True:
                 #bottle_2_pub.publish(tag_msg)
-                tag_message.transforms.append(bot_transform)
+                tag_msg.transforms.append(bot_transform)
                 prev_bottle_trans = transform.translation
                 prev_bottle_rot = transform.rotation
         except:
             # rospy.logwarn("No Bottle 2")
             pass
+        tf_pub.publish(tag_msg)
 
         rate.sleep()
 

@@ -184,7 +184,7 @@ class Pipeline:
         rospy.loginfo("Starting cam 1")
         self.rspipeline1.start(self.rsconfig1)
         time.sleep(1)
-        rospy.loginfo("Starting cam 2")
+        #rospy.loginfo("Starting cam 2")
         #self.rspipeline2.start(self.rsconfig2)(self.rsconfig2)
 
         try:
