@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
+import time
 import math
 from std_msgs.msg import Header
 import numpy as np
@@ -157,6 +158,9 @@ class Pipeline:
         self.rsconfig2.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
         self.rsconfig2.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
 
+        self.profile1 = self.rsconfig1.resolve(self.rspipeline1)
+        self.profile2 = self.rsconfig2.resolve(self.rspipeline2)
+
         ### Making robot go 10Hz
         self.rate = rospy.Rate(60)
         self.count = 0
@@ -176,10 +180,12 @@ class Pipeline:
         rospy.sleep(1)
 
     def update_current_image(self):
-
         # # Start streaming
+        rospy.loginfo("Starting cam 1")
         self.rspipeline1.start(self.rsconfig1)
-        #self.rspipeline2.start(self.rsconfig2)
+        time.sleep(1)
+        rospy.loginfo("Starting cam 2")
+        #self.rspipeline2.start(self.rsconfig2)(self.rsconfig2)
 
         try:
             while True:
@@ -194,7 +200,7 @@ class Pipeline:
                 depth_frame1 = frames1.get_depth_frame()
                 color_frame1 = frames1.get_color_frame()
                 #depth_frame2 = frames2.get_depth_frame()
-                #color_frame2 = frames2.get_color_frame()
+                #col-or_frame2 = frames2.get_color_frame()
                 if not depth_frame1 or not color_frame1:
                     continue
 
