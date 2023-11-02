@@ -27,7 +27,7 @@ class Pipeline:
         ### Initialize node, name it 'lab2'
         rospy.init_node('pipeline')
 
-        self.br = tf.TransformBroadcaster()
+        self.br = tf.TransformBroadcaster(queue_size=1)
 
         self.pipeline_rate = 0
 
@@ -397,7 +397,7 @@ class Pipeline:
 
                         self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (
                         transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
-                                         rospy.Time.now(), "calibration_box", "camera")
+                                         rospy.Time.now(), "grey_cube", "camera")
 
                 elif tag['id'] == 1:
                     center = tag['center']
