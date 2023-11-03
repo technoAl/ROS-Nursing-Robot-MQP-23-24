@@ -1,112 +1,15 @@
 #!/usr/bin/env python3
 
 import rospy
-import time
+import time 
 import math
 from std_msgs.msg import Header
-import numpy as np
+import numpy as np 
 import cv2
 from apriltag import apriltag
-from PIL import Image as im
-from nav_msgs.msg import Path
-from geometry_msgs.msg import PoseStamped, Point, Pose, Quaternion, TransformStamped, Vector3, Transform
-import pyrealsense2 as rs
-import time
-from tf.transformations import quaternion_from_euler, quaternion_from_matrix
-import tf
-from pyquaternion import Quaternion as pyQuaternion
-from std_msgs.msg import Float32
-import statistics
 
-
-
-def object_points(tag_size):
-    return [[-tag_size / 2, tag_size / 2, 0.0],
-            [tag_size / 2, tag_size / 2, 0.0],
-            [tag_size / 2, -tag_size / 2, 0.0],
-            [-tag_size / 2, -tag_size / 2, 0.0]]
-
-class previousReadings:
-    def __init__(self):
-        self.initialized = False
-        self.previousQuat = [0, 0, 0, 0]
-        self.previousFour = [0, 0, 0, 0]
-        self.prevCounter = 0
-        self.inMotion = False
-        self.prevTrans = 0
-        self.threshold = 0.03
-
-        # use for normal distribution
-        # self.rolling_values = np.zeros(20)
-        # self.rolling_index = 0
-
-        # use for entropy
-        self.rolling_values = []
-    def filter_readings(self, orientation):
-        self.rolling_values.append(orientation)
-
-        if len(self.rolling_values) > 16:
-            self.rolling_values.pop(0)
-
-        sum_x, sum_y, sum_z = 0, 0, 0
-        diff = 0
-        avgs = []
-        for i in range(len(self.rolling_values)): # Calc distance amongst every quaternion to see if we are moving as well as average out quaternions for filter
-
-            sum = 0
-
-            for j in range(len(self.rolling_values)):
-                q = pyQuaternion(axis=[self.rolling_values[i][0], self.rolling_values[i][1], self.rolling_values[i][2]], angle=self.rolling_values[i][3])
-                r = pyQuaternion(axis=[self.rolling_values[j][0], self.rolling_values[j][1], self.rolling_values[j][2]], angle=self.rolling_values[j][3])
-                sum = sum + pyQuaternion.distance(q, r)
-
-            avg = round(sum / len(self.rolling_values), 5)
-            avgs.append(avg)
-            diff = diff + avg
-
-        avg_diff = diff / len(self.rolling_values) # Average difference among quaternions
-
-        sorted_avgs = sorted(avgs)
-        if len(avgs) < 7:
-            return orientation
-        else:
-            if (avg_diff > 0.035): # If moving use median filter
-                #rospy.loginfo("Moving")
-                #self.still_count = 0
-                return orientation
-            else: # If we are still, average out the quaternions
-                #rospy.loginfo("Still")
-                #rospy.loginfo(avg_diff)
-                for k in range(len(sorted_avgs) - 6):
-                    index = avgs.index(sorted_avgs[k])
-                    x = self.rolling_values[index][0]
-                    y = self.rolling_values[index][1]
-                    z = self.rolling_values[index][2]
-                    w = self.rolling_values[index][3]
-                    sum_x = sum_x + w * x
-                    sum_y = sum_y + w * y
-                    sum_z = sum_z + w * z
-
-                avg_x = sum_x / (len(self.rolling_values) - 6)
-                avg_y = sum_y / (len(self.rolling_values) - 6)
-                avg_z = sum_z / (len(self.rolling_values) - 6)
-
-                new_w = pow((pow(avg_x , 2) + pow(avg_y, 2) + pow(avg_z, 2)) , 0.5)
-
-                new_x = avg_x / new_w
-                new_y = avg_y / new_w
-                new_z = avg_z / new_w
-
-                d = pow((pow(new_x , 2) + pow(new_y, 2) + pow(new_z, 2) + pow(new_w, 2)) , 0.5)
-
-                return (new_x, new_y, new_z, new_w)/d
-class Pipeline:
-
-    def __init__(self):
-        """
-        Class constructor
-        """
-
+class Cam_Transform(self):
+    
         ### Initialize node, name it 'lab2'
         rospy.init_node('pipeline')
         self.cam1serial = '936322072225'
@@ -163,23 +66,12 @@ class Pipeline:
 
         ### Making robot go 10Hz
         self.rate = rospy.Rate(60)
-        self.count = 0
-
-        self.boxVal = previousReadings()
-        self.canVal = previousReadings()
-
-        self.median_filter = [TransformStamped(), TransformStamped(), TransformStamped()]
-        self.median_count = 0
-        self.still_count = 5
-
-        self.listener = tf.TransformListener()
-        rospy.sleep(2)
         self.br.sendTransform((0, 0, 0), tf.transformations.quaternion_from_euler(0, 0, 0), rospy.Time.now(), "adjust",
                               "world")
 
         rospy.sleep(1)
 
-    def update_current_image(self):
+    def get_current_image(self):
         # # Start streaming
         rospy.loginfo("Starting cam 1")
         self.rspipeline1.start(self.rsconfig1)
@@ -236,7 +128,7 @@ class Pipeline:
                 #     images2 = np.hstack((color_image2, depth_colormap2))
 
                 # Show images
-                self.pipeline(color_image1)
+                self.pipeline(color_image1, color_image2)
                 #self.record_images(color_image)
                 # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
                 # cv2.imshow('RealSense', images)
@@ -245,39 +137,7 @@ class Pipeline:
             self.rspipeline1.stop()
             #self.rspipeline2.stop()
 
-    def record_images(self, image):
-        # height = image.height
-        # width = image.width
-        #
-        # # Loop through each pixel of the map and convert it to pixel data
-        # new_image = np.zeros((height, width, 3), dtype=np.uint8)
-        #
-        # for i in range(height):
-        #     for j in range(width):
-        #         for k in range(3):
-        #             # BGR encoding for opencv
-        #
-        #             mult = 2 if k == 0 else 0 if k == 2 else 1
-        #             cell = image.data[(i * width * 3 + j * 3 + k)]
-        #             if cell >= 0:
-        #                 new_image[i][j][mult] = cell
-        cv2.imwrite(str(self.count) + ".jpg", image)
-        print("done writing image")
-        print(self.count)
-        self.count += 1
-        rospy.sleep(2)
-
-        # for q in self.rolling_values:
-        #     x = q[0]
-        #     y = q[1]
-        #     z = q[2]
-        #     w = q[3]
-        #
-        #     sum_x = sum_x + w*x
-        #     sum_y = sum_y + w*y
-        #     sum_z = sum_z + w*z
-    # image as image message
-    def pipeline(self, image):
+    def pipeline(self, image1, image2):
         # height = image.height
         # width = image.width
 
@@ -293,7 +153,8 @@ class Pipeline:
         #             if cell >= 0:
         #                 new_image[i][j][mult] = cell
 
-        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray_image1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
+        gray_image2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
         # rospy.loginfo("Convert Time " + str(time2 - time1))
 
         # cv2.imshow("header", new_image)
@@ -324,10 +185,16 @@ class Pipeline:
         # cx = 632.3028
         # cy = 343.9200
         # Camera 1
-        fx = 1357.7098
-        fy = 1364.4257
-        cx = 951.6751
-        cy = 511.0647
+        fx = 900.1325
+        fy = 900.2865
+        cx = 631.4351
+        cy = 342.4242
+        
+        # Camera 2 
+        fx2 = 0 
+        fy2 = 0
+        cx2 = 0 
+        cy2 = 0 
 
         intrinsics_mat = np.array([[fx, 0, cx],
                                    [0, fy, cy],
@@ -340,7 +207,7 @@ class Pipeline:
         # rospy.loginfo("Detector Time " + str(time2 - time1))
         if len(detections) > 0:
             for tag in detections:
-                if tag['id'] == 0:
+                if tag['id'] == 46:
 
                     center = tag['center']
                     lb_rb_rt_lt = tag['lb-rb-rt-lt']
@@ -394,71 +261,21 @@ class Pipeline:
                         # handle pos
                         orientation = quaternion_from_matrix(new_mat)
                         
-                        orientation = self.boxVal.filter_readings(orientation)
-
                         transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
 
 
                         self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (
-                            transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), "calibration_box", "camera")
-                                                   
-
-                       
-
-                elif tag['id'] == 1:
-                    center = tag['center']
-                    lb_rb_rt_lt = tag['lb-rb-rt-lt']
-                    lt_rt_rb_lb = np.zeros((4, 2))
-                    for i in range(4):
-                        lt_rt_rb_lb[i] = lb_rb_rt_lt[3 - i]
-
-                    # time1 = self.current_milli_time()
-                    good, prvecs, ptvecs = cv2.solvePnP(obj_pts, lt_rt_rb_lb, intrinsics_mat, (),
-                                                        flags=cv2.SOLVEPNP_IPPE_SQUARE)
-                    # time2 = self.current_milli_time()
-                    # rospy.loginfo("Solver Time " + str(time2 - time1))
-
-                    if good:
-
-                        # handle rotation
-                        transform = Transform()
-                        transform.translation = Vector3(ptvecs[0][0], ptvecs[1][0], ptvecs[2][0])
-
-                        rot_matrix, _ = cv2.Rodrigues(prvecs)
-
-                        new_mat = np.zeros((4, 4), np.float32)
-                        for i in range(3):
-                            for j in range(3):
-                                new_mat[i][j] = rot_matrix[i][j]
-                        new_mat[3, 3] = 1
-                        # handle pos
-                        orientation = quaternion_from_matrix(new_mat)
-
-                        orientation = self.canVal.filter_readings(orientation)
-                        
-                        transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
-
-                        self.br.sendTransform(
-                            (transform.translation.x, transform.translation.y, transform.translation.z), (
-                                transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), "corn_can", "camera")
-
-                                                    
+                            transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), "calibration_box", "camera")                                                 
                         
     
 
                 # imgpts, jac = cv2.projectPoints(opoints, prvecs, ptvecs, intrinsics_mat)
                 # draw_boxes(new_image, imgpts, edges)
 
-    def current_milli_time(self):
-        return round(time.time() * 1000)
-
-    def run(self):
-        r = rospy.Rate(60)
-
-        while not rospy.is_shutdown():
-            self.update_current_image()
-        rospy.spin()
 
 
-if __name__ == '__main__':
-    Pipeline().run()
+
+
+
+
+
