@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
+import time
 import math
 from std_msgs.msg import Header
 import numpy as np
@@ -108,7 +109,8 @@ class Pipeline:
 
         ### Initialize node, name it 'lab2'
         rospy.init_node('pipeline')
-
+        self.cam1serial = '936322072225'
+        self.cam2serial = '825412070317'
         self.br = tf.TransformBroadcaster()
 
         self.pipeline_rate = 0
@@ -117,26 +119,47 @@ class Pipeline:
         self.intrinsics = 0
         self.plot_publisher = rospy.Publisher('/plot/value', Float32, queue_size=10)
         # camera setup through pyrealsense2
-        self.rspipeline = rs.pipeline()
-        self.rsconfig = rs.config()
+        self.rspipeline1 = rs.pipeline()
+        self.rspipeline2 = rs.pipeline()
 
-        self.rspipe_wrapper = rs.pipeline_wrapper(self.rspipeline)
-        self.pipeline_profile = self.rsconfig.resolve(self.rspipe_wrapper)
-        self.device = self.pipeline_profile.get_device()
-        self.device_product_line = str(self.device.get_info(rs.camera_info.product_line))
+        self.rsconfig1 = rs.config()
+        self.rsconfig2 = rs.config()
+
+        self.rspipe_wrapper1 = rs.pipeline_wrapper(self.rspipeline1)
+        self.pipeline_profile1 = self.rsconfig1.resolve(self.rspipe_wrapper1)
+        self.device1 = self.pipeline_profile1.get_device()
+        self.device_product_line1 = str(self.device1.get_info(rs.camera_info.product_line))
+
+        self.rspipe_wrapper2 = rs.pipeline_wrapper(self.rspipeline2)
+        self.pipeline_profile2 = self.rsconfig2.resolve(self.rspipe_wrapper2)
+        self.device2 = self.pipeline_profile2.get_device()
+        self.device_product_line2 = str(self.device2.get_info(rs.camera_info.product_line))
 
         found_rgb = False
-        for s in self.device.sensors:
+        for s in self.device1.sensors:
             if s.get_info(rs.camera_info.name) == 'RGB Camera':
                 found_rgb = True
                 break
         if not found_rgb:
             rospy.loginfo("The demo requires Depth camera with Color sensor")
             exit(0)
+        for s in self.device2.sensors:
+            if s.get_info(rs.camera_info.name) == 'RGB Camera':
+                found_rgb = True
+                break
+        if not found_rgb:
+            rospy.loginfo("The demo requires Depth camera with Color sensor")
+            exit(0)
+        self.rsconfig1.enable_device(self.cam1serial)
+        self.rsconfig1.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
+        self.rsconfig1.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
 
-        self.rsconfig.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
+        self.rsconfig2.enable_device(self.cam2serial)
+        self.rsconfig2.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
+        self.rsconfig2.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
 
-        self.rsconfig.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
+        self.profile1 = self.rsconfig1.resolve(self.rspipeline1)
+        self.profile2 = self.rsconfig2.resolve(self.rspipeline2)
 
         ### Making robot go 10Hz
         self.rate = rospy.Rate(60)
@@ -157,9 +180,12 @@ class Pipeline:
         rospy.sleep(1)
 
     def update_current_image(self):
-
         # # Start streaming
-        self.rspipeline.start(self.rsconfig)
+        rospy.loginfo("Starting cam 1")
+        self.rspipeline1.start(self.rsconfig1)
+        time.sleep(1)
+        #rospy.loginfo("Starting cam 2")
+        #self.rspipeline2.start(self.rsconfig2)(self.rsconfig2)
 
         try:
             while True:
@@ -167,39 +193,57 @@ class Pipeline:
                 # Wait for a coherent pair of frames: depth and color
                 # lines 98 and 100 are used to test frame rate
                 # self.tim = self.current_milli_time()
-                frames = self.rspipeline.wait_for_frames()
+                frames1 = self.rspipeline1.wait_for_frames()
+                #frames2 = self.rspipeline2.wait_for_frames()
+
                 # rospy.loginfo("Cam Time: " + str(self.current_milli_time() - self.tim))
-                depth_frame = frames.get_depth_frame()
-                color_frame = frames.get_color_frame()
-                if not depth_frame or not color_frame:
+                depth_frame1 = frames1.get_depth_frame()
+                color_frame1 = frames1.get_color_frame()
+                #depth_frame2 = frames2.get_depth_frame()
+                #col-or_frame2 = frames2.get_color_frame()
+                if not depth_frame1 or not color_frame1:
                     continue
 
                 # Convert images to numpy arrays
-                depth_image = np.asanyarray(depth_frame.get_data())
-                color_image = np.asanyarray(color_frame.get_data())
+                depth_image1 = np.asanyarray(depth_frame1.get_data())
+                color_image1 = np.asanyarray(color_frame1.get_data())
+
+                #depth_image2 = np.asanyarray(depth_frame2.get_data())
+                #color_image2 = np.asanyarray(color_frame2.get_data())
 
                 # Apply colormap on depth image (image must be converted to 8-bit per pixel first)
-                depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
+                depth_colormap1 = cv2.applyColorMap(cv2.convertScaleAbs(depth_image1, alpha=0.03), cv2.COLORMAP_JET)
+                depth_colormap_dim1 = depth_colormap1.shape
+                color_colormap_dim1 = color_image1.shape
 
-                depth_colormap_dim = depth_colormap.shape
-                color_colormap_dim = color_image.shape
+                #depth_colormap2 = cv2.applyColorMap(cv2.convertScaleAbs(depth_image2, alpha=0.03), cv2.COLORMAP_JET)
+                #depth_colormap_dim2 = depth_colormap2.shape
+                #color_colormap_dim2 = color_image2.shape
 
                 # If depth and color resolutions are different, resize color image to match depth image for display
-                if depth_colormap_dim != color_colormap_dim:
-                    resized_color_image = cv2.resize(color_image, dsize=(depth_colormap_dim[1], depth_colormap_dim[0]),
+                if depth_colormap_dim1 != color_colormap_dim1:
+                    resized_color_image1 = cv2.resize(color_image1, dsize=(depth_colormap_dim1[1], depth_colormap_dim1[0]),
                                                      interpolation=cv2.INTER_AREA)
-                    images = np.hstack((resized_color_image, depth_colormap))
+                    images1 = np.hstack((resized_color_image1, depth_colormap1))
                 else:
-                    images = np.hstack((color_image, depth_colormap))
+                    images1 = np.hstack((color_image1, depth_colormap1))
+
+                # if depth_colormap_dim2 != color_colormap_dim2:
+                #     resized_color_image2 = cv2.resize(color_image2, dsize=(depth_colormap_dim2[1], depth_colormap_dim2[0]),
+                #                                      interpolation=cv2.INTER_AREA)
+                #     images2 = np.hstack((resized_color_image2, depth_colormap2))
+                # else:
+                #     images2 = np.hstack((color_image2, depth_colormap2))
 
                 # Show images
-                self.pipeline(color_image)
+                self.pipeline(color_image1)
                 #self.record_images(color_image)
                 # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
                 # cv2.imshow('RealSense', images)
                 # cv2.waitKey(1)
         finally:
-            self.rspipeline.stop()
+            self.rspipeline1.stop()
+            #self.rspipeline2.stop()
 
     def record_images(self, image):
         # height = image.height
