@@ -187,17 +187,17 @@ class Cam_Transform:
         try:
             while True:
 
-                # Wait for a coherent pair of frames: depth and color
-                # lines 98 and 100 are used to test frame rate
-                # self.tim = self.current_milli_time()
+                frames2 = self.rspipeline2.wait_for_frames()
+                #rospy.loginfo("Frame 2 acquired")
                 frames1 = self.rspipeline1.wait_for_frames()
-                #frames2 = self.rspipeline2.wait_for_frames()
+                #rospy.loginfo("Frame 1 acquired")
+
 
                 # rospy.loginfo("Cam Time: " + str(self.current_milli_time() - self.tim))
                 depth_frame1 = frames1.get_depth_frame()
                 color_frame1 = frames1.get_color_frame()
-                #depth_frame2 = frames2.get_depth_frame()
-                #col-or_frame2 = frames2.get_color_frame()
+                depth_frame2 = frames2.get_depth_frame()
+                color_frame2 = frames2.get_color_frame()
                 if not depth_frame1 or not color_frame1:
                     continue
 
@@ -205,17 +205,17 @@ class Cam_Transform:
                 depth_image1 = np.asanyarray(depth_frame1.get_data())
                 color_image1 = np.asanyarray(color_frame1.get_data())
 
-                #depth_image2 = np.asanyarray(depth_frame2.get_data())
-                #color_image2 = np.asanyarray(color_frame2.get_data())
+                depth_image2 = np.asanyarray(depth_frame2.get_data())
+                color_image2 = np.asanyarray(color_frame2.get_data())
 
                 # Apply colormap on depth image (image must be converted to 8-bit per pixel first)
                 depth_colormap1 = cv2.applyColorMap(cv2.convertScaleAbs(depth_image1, alpha=0.03), cv2.COLORMAP_JET)
                 depth_colormap_dim1 = depth_colormap1.shape
                 color_colormap_dim1 = color_image1.shape
 
-                #depth_colormap2 = cv2.applyColorMap(cv2.convertScaleAbs(depth_image2, alpha=0.03), cv2.COLORMAP_JET)
-                #depth_colormap_dim2 = depth_colormap2.shape
-                #color_colormap_dim2 = color_image2.shape
+                depth_colormap2 = cv2.applyColorMap(cv2.convertScaleAbs(depth_image2, alpha=0.03), cv2.COLORMAP_JET)
+                depth_colormap_dim2 = depth_colormap2.shape
+                color_colormap_dim2 = color_image2.shape
 
                 # If depth and color resolutions are different, resize color image to match depth image for display
                 if depth_colormap_dim1 != color_colormap_dim1:
@@ -225,12 +225,12 @@ class Cam_Transform:
                 else:
                     images1 = np.hstack((color_image1, depth_colormap1))
 
-                # if depth_colormap_dim2 != color_colormap_dim2:
-                #     resized_color_image2 = cv2.resize(color_image2, dsize=(depth_colormap_dim2[1], depth_colormap_dim2[0]),
-                #                                      interpolation=cv2.INTER_AREA)
-                #     images2 = np.hstack((resized_color_image2, depth_colormap2))
-                # else:
-                #     images2 = np.hstack((color_image2, depth_colormap2))
+                if depth_colormap_dim2 != color_colormap_dim2:
+                    resized_color_image2 = cv2.resize(color_image2, dsize=(depth_colormap_dim2[1], depth_colormap_dim2[0]),
+                                                     interpolation=cv2.INTER_AREA)
+                    images2 = np.hstack((resized_color_image2, depth_colormap2))
+                else:
+                    images2 = np.hstack((color_image2, depth_colormap2))
 
                 # Show images
                 self.broadcaster(color_image1, color_image2)
@@ -240,7 +240,7 @@ class Cam_Transform:
                 # cv2.waitKey(1)
         finally:
             self.rspipeline1.stop()
-            #self.rspipeline2.stop()
+            self.rspipeline2.stop()
 
     def broadcaster(self, image1, image2):
         
