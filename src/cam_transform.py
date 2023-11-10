@@ -177,13 +177,13 @@ class Cam_Transform:
         rospy.sleep(1)
 
     def get_current_image(self):
+
         # # Start streaming
         rospy.loginfo("Starting cam 1")
         self.rspipeline1.start(self.rsconfig1)
-        self.rs.pipeline2.start(self.rsconfig2)
         time.sleep(1)
-        #rospy.loginfo("Starting cam 2")
-        #self.rspipeline2.start(self.rsconfig2)(self.rsconfig2)
+        rospy.loginfo("Starting cam 2")
+        self.rspipeline2.start(self.rsconfig2)
 
         try:
             while True:
