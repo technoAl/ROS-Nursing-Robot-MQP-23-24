@@ -109,6 +109,7 @@ class Pipeline:
 
         ### Initialize node, name it 'lab2'
         rospy.init_node('pipeline')
+
         self.cam1serial = '936322072225'
         self.cam2serial = '825412070317'
         self.br = tf.TransformBroadcaster()
@@ -165,6 +166,7 @@ class Pipeline:
         self.rate = rospy.Rate(60)
         self.count = 0
 
+        self.tagIDs = [0, 1]
         self.boxVal = previousReadings()
         self.canVal = previousReadings()
 
@@ -184,8 +186,8 @@ class Pipeline:
         rospy.loginfo("Starting cam 1")
         self.rspipeline1.start(self.rsconfig1)
         time.sleep(1)
-        #rospy.loginfo("Starting cam 2")
-        #self.rspipeline2.start(self.rsconfig2)(self.rsconfig2)
+        rospy.loginfo("Starting cam 2")
+        self.rspipeline2.start(self.rsconfig2)
 
         try:
             while True:
@@ -193,14 +195,17 @@ class Pipeline:
                 # Wait for a coherent pair of frames: depth and color
                 # lines 98 and 100 are used to test frame rate
                 # self.tim = self.current_milli_time()
+                frames2 = self.rspipeline2.wait_for_frames()
+                #rospy.loginfo("Frame 2 acquired")
                 frames1 = self.rspipeline1.wait_for_frames()
-                #frames2 = self.rspipeline2.wait_for_frames()
+                #rospy.loginfo("Frame 1 acquired")
+
 
                 # rospy.loginfo("Cam Time: " + str(self.current_milli_time() - self.tim))
                 depth_frame1 = frames1.get_depth_frame()
                 color_frame1 = frames1.get_color_frame()
-                #depth_frame2 = frames2.get_depth_frame()
-                #col-or_frame2 = frames2.get_color_frame()
+                depth_frame2 = frames2.get_depth_frame()
+                color_frame2 = frames2.get_color_frame()
                 if not depth_frame1 or not color_frame1:
                     continue
 
@@ -208,17 +213,17 @@ class Pipeline:
                 depth_image1 = np.asanyarray(depth_frame1.get_data())
                 color_image1 = np.asanyarray(color_frame1.get_data())
 
-                #depth_image2 = np.asanyarray(depth_frame2.get_data())
-                #color_image2 = np.asanyarray(color_frame2.get_data())
+                depth_image2 = np.asanyarray(depth_frame2.get_data())
+                color_image2 = np.asanyarray(color_frame2.get_data())
 
                 # Apply colormap on depth image (image must be converted to 8-bit per pixel first)
                 depth_colormap1 = cv2.applyColorMap(cv2.convertScaleAbs(depth_image1, alpha=0.03), cv2.COLORMAP_JET)
                 depth_colormap_dim1 = depth_colormap1.shape
                 color_colormap_dim1 = color_image1.shape
 
-                #depth_colormap2 = cv2.applyColorMap(cv2.convertScaleAbs(depth_image2, alpha=0.03), cv2.COLORMAP_JET)
-                #depth_colormap_dim2 = depth_colormap2.shape
-                #color_colormap_dim2 = color_image2.shape
+                depth_colormap2 = cv2.applyColorMap(cv2.convertScaleAbs(depth_image2, alpha=0.03), cv2.COLORMAP_JET)
+                depth_colormap_dim2 = depth_colormap2.shape
+                color_colormap_dim2 = color_image2.shape
 
                 # If depth and color resolutions are different, resize color image to match depth image for display
                 if depth_colormap_dim1 != color_colormap_dim1:
@@ -228,22 +233,22 @@ class Pipeline:
                 else:
                     images1 = np.hstack((color_image1, depth_colormap1))
 
-                # if depth_colormap_dim2 != color_colormap_dim2:
-                #     resized_color_image2 = cv2.resize(color_image2, dsize=(depth_colormap_dim2[1], depth_colormap_dim2[0]),
-                #                                      interpolation=cv2.INTER_AREA)
-                #     images2 = np.hstack((resized_color_image2, depth_colormap2))
-                # else:
-                #     images2 = np.hstack((color_image2, depth_colormap2))
+                if depth_colormap_dim2 != color_colormap_dim2:
+                    resized_color_image2 = cv2.resize(color_image2, dsize=(depth_colormap_dim2[1], depth_colormap_dim2[0]),
+                                                     interpolation=cv2.INTER_AREA)
+                    images2 = np.hstack((resized_color_image2, depth_colormap2))
+                else:
+                    images2 = np.hstack((color_image2, depth_colormap2))
 
                 # Show images
-                self.pipeline(color_image1)
+                self.pipeline(color_image1, color_image2)
                 #self.record_images(color_image)
                 # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
                 # cv2.imshow('RealSense', images)
                 # cv2.waitKey(1)
         finally:
             self.rspipeline1.stop()
-            #self.rspipeline2.stop()
+            self.rspipeline2.stop()
 
     def record_images(self, image):
         # height = image.height
@@ -277,7 +282,7 @@ class Pipeline:
         #     sum_y = sum_y + w*y
         #     sum_z = sum_z + w*z
     # image as image message
-    def pipeline(self, image):
+    def pipeline(self, image1, image2):
         # height = image.height
         # width = image.width
 
@@ -293,7 +298,8 @@ class Pipeline:
         #             if cell >= 0:
         #                 new_image[i][j][mult] = cell
 
-        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray_image1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
+        gray_image2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
         # rospy.loginfo("Convert Time " + str(time2 - time1))
 
         # cv2.imshow("header", new_image)
@@ -336,18 +342,19 @@ class Pipeline:
         TAG_SIZE = 0.025 #0.062 # Tag size from Step 1 in meters
         obj_pts = np.array(object_points(TAG_SIZE))
         detector = apriltag(family="tag36h11")
-        detections = detector.detect(gray_image)  # , estimate_tag_pose=True, camera_params=PARAMS, tag_size=TAG_SIZE)
-        # rospy.loginfo("Detector Time " + str(time2 - time1))
-        if len(detections) > 0:
-            for tag in detections:
-                if tag['id'] == 0:
+        detections1 = detector.detect(gray_image1)
+        detections2 = detector.detect(gray_image2)
 
+        for ID in self.tagIDs:
+            for tag in detections1:
+                if tag['id'] == ID:
                     center = tag['center']
                     lb_rb_rt_lt = tag['lb-rb-rt-lt']
                     lt_rt_rb_lb = np.zeros((4, 2))
                     for i in range(4):
                         lt_rt_rb_lb[i] = lb_rb_rt_lt[3 - i]
-
+                    # , estimate_tag_pose=True, camera_params=PARAMS, tag_size=TAG_SIZE)
+                    # rospy.loginfo("Detector Time " + str(time2 - time1))
                     # rospy.loginfo(lt_rt_rb_lb)
 
                     # time1 = self.current_milli_time()
@@ -357,68 +364,7 @@ class Pipeline:
                     # rospy.loginfo("Solver Time " + str(time2 - time1))
 
                     if good:
-
-                        # pt = lt_rt_rb_lb[0]
-                        # print(tuple(pt))
-
-                        # p1 = (int(lt_rt_rb_lb[0][0]), int(lt_rt_rb_lb[0][1]))
-                        # p2 = (int(lt_rt_rb_lb[1][0]), int(lt_rt_rb_lb[1][1]))
-                        # p3 = (int(lt_rt_rb_lb[2][0]), int(lt_rt_rb_lb[2][1]))
-                        # p4 = (int(lt_rt_rb_lb[3][0]), int(lt_rt_rb_lb[3][1]))
-                        #
-                        # image = cv2.line(image, p1, p2, (0, 255, 0), 2)
-                        # image = cv2.line(image, p2, p3, (0, 255, 0), 2)
-                        # #new_image = cv2.line(new_image, p3, p4, (0, 255, 0), 2)
-                        # #new_image = cv2.line(new_image, p4, p1, (0, 255, 0), 2)
-                        #
-                        # cv2.imshow("max range", image)
-                        # cv2.waitKey(0)
-                        # time1 = self.current_milli_time()
-
-
                         # Make 2 Pose w/ vectors
-
-                        # handle rotation
-                        transform = Transform()
-                        transform.translation = Vector3(ptvecs[0][0], ptvecs[1][0], ptvecs[2][0])
-
-                        rot_matrix,_ = cv2.Rodrigues(prvecs)
-
-
-                        new_mat = np.zeros((4,4), np.float32)
-                        for i in range(3):
-                            for j in range(3):
-                                new_mat[i][j] = rot_matrix[i][j]
-                        new_mat[3,3] = 1
-                        #rospy.loginfo(rot_matrix)
-                        # handle pos
-                        orientation = quaternion_from_matrix(new_mat)
-                        
-                        orientation = self.boxVal.filter_readings(orientation)
-
-                        transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
-
-
-                        self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (
-                            transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), "calibration_box", "camera")
-                                                   
-
-                       
-
-                elif tag['id'] == 1:
-                    center = tag['center']
-                    lb_rb_rt_lt = tag['lb-rb-rt-lt']
-                    lt_rt_rb_lb = np.zeros((4, 2))
-                    for i in range(4):
-                        lt_rt_rb_lb[i] = lb_rb_rt_lt[3 - i]
-
-                    # time1 = self.current_milli_time()
-                    good, prvecs, ptvecs = cv2.solvePnP(obj_pts, lt_rt_rb_lb, intrinsics_mat, (),
-                                                        flags=cv2.SOLVEPNP_IPPE_SQUARE)
-                    # time2 = self.current_milli_time()
-                    # rospy.loginfo("Solver Time " + str(time2 - time1))
-
-                    if good:
 
                         # handle rotation
                         transform = Transform()
@@ -431,23 +377,46 @@ class Pipeline:
                             for j in range(3):
                                 new_mat[i][j] = rot_matrix[i][j]
                         new_mat[3, 3] = 1
+                        # rospy.loginfo(rot_matrix)
                         # handle pos
+                        rot_matrix, _ = cv2.Rodrigues(prvecs)
+
                         orientation = quaternion_from_matrix(new_mat)
+                        # orientation = self.boxVal.filter_readings(orientation)
 
-                        orientation = self.canVal.filter_readings(orientation)
-                        
                         transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
-
+                        if ID == 0:
+                            object_name = "calibration_box"
+                        elif ID == 1:
+                            object_name = "corn_can"
                         self.br.sendTransform(
                             (transform.translation.x, transform.translation.y, transform.translation.z), (
-                                transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), "corn_can", "camera")
+                                transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
+                            rospy.Time.now(), object_name, "camera")
+            for tag in detections2:
+                if tag['id'] == ID:
+                    center = tag['center']
+                    lb_rb_rt_lt = tag['lb-rb-rt-lt']
+                    lt_rt_rb_lb = np.zeros((4, 2))
+                    for i in range(4):
+                        lt_rt_rb_lb[i] = lb_rb_rt_lt[3 - i]
+                    # , estimate_tag_pose=True, camera_params=PARAMS, tag_size=TAG_SIZE)
 
-                                                    
-                        
-    
+                    # time1 = self.current_milli_time()
+                    good, prvecs, ptvecs = cv2.solvePnP(obj_pts, lt_rt_rb_lb, intrinsics_mat, (),
+                                                        flags=cv2.SOLVEPNP_IPPE_SQUARE)
+                    if good:
+                        transform = Transform()
+                        transform.translation = Vector3(ptvecs[0][0], ptvecs[1][0], ptvecs[2][0])
+                        rot_matrix, _ = cv2.Rodrigues(prvecs)
+                        new_mat = np.zeros((4, 4), np.float32)
+                        for i in range(3):
+                            for j in range(3):
+                                new_mat[i][j] = rot_matrix[i][j]
+                        new_mat[3, 3] = 1
+                        orientation2 = quaternion_from_matrix(new_mat)
 
-                # imgpts, jac = cv2.projectPoints(opoints, prvecs, ptvecs, intrinsics_mat)
-                # draw_boxes(new_image, imgpts, edges)
+
 
     def current_milli_time(self):
         return round(time.time() * 1000)
