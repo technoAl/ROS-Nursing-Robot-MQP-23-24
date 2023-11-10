@@ -109,6 +109,7 @@ class Pipeline:
 
         ### Initialize node, name it 'lab2'
         rospy.init_node('pipeline')
+
         self.cam1serial = '936322072225'
         self.cam2serial = '825412070317'
         self.br = tf.TransformBroadcaster()
@@ -165,6 +166,7 @@ class Pipeline:
         self.rate = rospy.Rate(60)
         self.count = 0
 
+        self.tagIDs = [0, 1]
         self.boxVal = previousReadings()
         self.canVal = previousReadings()
 
@@ -340,18 +342,19 @@ class Pipeline:
         TAG_SIZE = 0.025 #0.062 # Tag size from Step 1 in meters
         obj_pts = np.array(object_points(TAG_SIZE))
         detector = apriltag(family="tag36h11")
-        detections1 = detector.detect(gray_image1)  # , estimate_tag_pose=True, camera_params=PARAMS, tag_size=TAG_SIZE)
-        # rospy.loginfo("Detector Time " + str(time2 - time1))
-        if len(detections1) > 0:
-            for tag in detections1:
-                if tag['id'] == 0:
+        detections1 = detector.detect(gray_image1)
+        detections2 = detector.detect(gray_image2)
 
+        for ID in self.tagIDs:
+            for tag in detections1:
+                if tag['id'] == ID:
                     center = tag['center']
                     lb_rb_rt_lt = tag['lb-rb-rt-lt']
                     lt_rt_rb_lb = np.zeros((4, 2))
                     for i in range(4):
                         lt_rt_rb_lb[i] = lb_rb_rt_lt[3 - i]
-
+                    # , estimate_tag_pose=True, camera_params=PARAMS, tag_size=TAG_SIZE)
+                    # rospy.loginfo("Detector Time " + str(time2 - time1))
                     # rospy.loginfo(lt_rt_rb_lb)
 
                     # time1 = self.current_milli_time()
@@ -367,48 +370,6 @@ class Pipeline:
                         transform = Transform()
                         transform.translation = Vector3(ptvecs[0][0], ptvecs[1][0], ptvecs[2][0])
 
-                        rot_matrix,_ = cv2.Rodrigues(prvecs)
-
-
-                        new_mat = np.zeros((4,4), np.float32)
-                        for i in range(3):
-                            for j in range(3):
-                                new_mat[i][j] = rot_matrix[i][j]
-                        new_mat[3,3] = 1
-                        #rospy.loginfo(rot_matrix)
-                        # handle pos
-
-                        orientation = quaternion_from_matrix(new_mat)
-                        #orientation = self.boxVal.filter_readings(orientation)
-
-                        transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
-
-
-                        self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (
-                            transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), "calibration_box", "camera")
-                                                   
-
-                       
-
-                elif tag['id'] == 1:
-                    center = tag['center']
-                    lb_rb_rt_lt = tag['lb-rb-rt-lt']
-                    lt_rt_rb_lb = np.zeros((4, 2))
-                    for i in range(4):
-                        lt_rt_rb_lb[i] = lb_rb_rt_lt[3 - i]
-
-                    # time1 = self.current_milli_time()
-                    good, prvecs, ptvecs = cv2.solvePnP(obj_pts, lt_rt_rb_lb, intrinsics_mat, (),
-                                                        flags=cv2.SOLVEPNP_IPPE_SQUARE)
-                    # time2 = self.current_milli_time()
-                    # rospy.loginfo("Solver Time " + str(time2 - time1))
-
-                    if good:
-
-                        # handle rotation
-                        transform = Transform()
-                        transform.translation = Vector3(ptvecs[0][0], ptvecs[1][0], ptvecs[2][0])
-
                         rot_matrix, _ = cv2.Rodrigues(prvecs)
 
                         new_mat = np.zeros((4, 4), np.float32)
@@ -416,23 +377,46 @@ class Pipeline:
                             for j in range(3):
                                 new_mat[i][j] = rot_matrix[i][j]
                         new_mat[3, 3] = 1
+                        # rospy.loginfo(rot_matrix)
                         # handle pos
+                        rot_matrix, _ = cv2.Rodrigues(prvecs)
+
                         orientation = quaternion_from_matrix(new_mat)
+                        # orientation = self.boxVal.filter_readings(orientation)
 
-                        #orientation = self.canVal.filter_readings(orientation)
-                        
                         transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
-
+                        if ID == 0:
+                            object_name = "calibration_box"
+                        elif ID == 1:
+                            object_name = "corn_can"
                         self.br.sendTransform(
                             (transform.translation.x, transform.translation.y, transform.translation.z), (
-                                transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), "corn_can", "camera")
+                                transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
+                            rospy.Time.now(), object_name, "camera")
+            for tag in detections2:
+                if tag['id'] == ID:
+                    center = tag['center']
+                    lb_rb_rt_lt = tag['lb-rb-rt-lt']
+                    lt_rt_rb_lb = np.zeros((4, 2))
+                    for i in range(4):
+                        lt_rt_rb_lb[i] = lb_rb_rt_lt[3 - i]
+                    # , estimate_tag_pose=True, camera_params=PARAMS, tag_size=TAG_SIZE)
 
-                                                    
-                        
-    
+                    # time1 = self.current_milli_time()
+                    good, prvecs, ptvecs = cv2.solvePnP(obj_pts, lt_rt_rb_lb, intrinsics_mat, (),
+                                                        flags=cv2.SOLVEPNP_IPPE_SQUARE)
+                    if good:
+                        transform = Transform()
+                        transform.translation = Vector3(ptvecs[0][0], ptvecs[1][0], ptvecs[2][0])
+                        rot_matrix, _ = cv2.Rodrigues(prvecs)
+                        new_mat = np.zeros((4, 4), np.float32)
+                        for i in range(3):
+                            for j in range(3):
+                                new_mat[i][j] = rot_matrix[i][j]
+                        new_mat[3, 3] = 1
+                        orientation2 = quaternion_from_matrix(new_mat)
 
-                # imgpts, jac = cv2.projectPoints(opoints, prvecs, ptvecs, intrinsics_mat)
-                # draw_boxes(new_image, imgpts, edges)
+
 
     def current_milli_time(self):
         return round(time.time() * 1000)
