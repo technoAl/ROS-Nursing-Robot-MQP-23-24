@@ -244,7 +244,7 @@ class Pipeline:
                 self.pipeline(color_image1, color_image2)
                 #self.record_images(color_image)
                 # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
-                # cv2.imshow('RealSense', images)
+                #cv2.imshow('RealSense', images1)
                 # cv2.waitKey(1)
         finally:
             self.rspipeline1.stop()
@@ -302,9 +302,9 @@ class Pipeline:
         gray_image2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
         # rospy.loginfo("Convert Time " + str(time2 - time1))
 
-        # cv2.imshow("header", new_image)
+        # cv2.imshow("header", image2)
         # cv2.waitKey(0)
-
+        #
         # # closing all open windows
         # cv2.destroyAllWindows()
 

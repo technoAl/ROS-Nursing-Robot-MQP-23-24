@@ -10,13 +10,19 @@ from apriltag import apriltag
 import tf
 from std_msgs.msg import Float32
 from geometry_msgs.msg import Quaternion, TransformStamped, Vector3, Transform
+from tf.transformations import quaternion_from_euler, quaternion_from_matrix
 import pyrealsense2 as rs
 
 
+def object_points(tag_size):
+    return [[-tag_size / 2, tag_size / 2, 0.0],
+            [tag_size / 2, tag_size / 2, 0.0],
+            [tag_size / 2, -tag_size / 2, 0.0],
+            [-tag_size / 2, -tag_size / 2, 0.0]]
 class Image_Pipeline:
     def __init__(self):
         
-        self.tag_size = 0.08 #tag size in meters
+        self.tag_size = 0.079 #tag size in meters
         self.cam1_intrinsics = np.array([[900.1325, 0 , 631.4351],
                                          [0, 900.2865, 342.4242],
                                          [0, 0, 1]])
@@ -34,14 +40,14 @@ class Image_Pipeline:
 
 
         gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        obj_pts = np.array(object_points(TAG_SIZE))
+        obj_pts = np.array(object_points(self.tag_size))
         detector = apriltag(family="tag36h11")
         detections = detector.detect(gray_image)  # , estimate_tag_pose=True, camera_params=PARAMS, tag_size=TAG_SIZE)
         # rospy.loginfo("Detector Time " + str(time2 - time1))
 
         if len(detections) > 0:
             for tag in detections:
-                if tag['id'] == 46:
+                if tag['id'] == 47:
 
                     center = tag['center']
                     lb_rb_rt_lt = tag['lb-rb-rt-lt']
@@ -76,14 +82,8 @@ class Image_Pipeline:
                             # cv2.waitKey(0)
                         # time1 = self.current_milli_time()
 
-
-                        # Make 2 Pose w/ vectors
-
-                        # handle rotation
-                        transform = Transform()
-                        transform.translation = Vector3(ptvecs[0][0], ptvecs[1][0], ptvecs[2][0])
-
                         rot_matrix,_ = cv2.Rodrigues(prvecs)
+
 
 
                         new_mat = np.zeros((4,4), np.float32)
@@ -91,19 +91,19 @@ class Image_Pipeline:
                             for j in range(3):
                                 new_mat[i][j] = rot_matrix[i][j]
                         new_mat[3,3] = 1
+                        mat = np.asarray(new_mat).T
                         #rospy.loginfo(rot_matrix)
                         # handle pos
-                        orientation = quaternion_from_matrix(new_mat)
+                        orientation = quaternion_from_matrix(mat)
                         
                         translation = [ptvecs[0][0], ptvecs[1][0], ptvecs[2][0]]
-                        data = orientation.append(translation)
-                        return data
-
-                        transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
+                        return translation, orientation
 
 
-                        self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (
-                            transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), "calibration_box", "camera")
+
+
+
+
     
 
 
@@ -118,6 +118,8 @@ class Cam_Transform:
         self.br = tf.TransformBroadcaster()
 
         self.pipeline_rate = 0
+
+        self.image_count = 0
 
         self.current_image = 0
         self.intrinsics = 0
@@ -244,28 +246,37 @@ class Cam_Transform:
             self.rspipeline2.stop()
 
     def broadcaster(self, image1, image2):
+
+
+        cam1_translation, cam1_rotation = self.image_pipeline.pipeline(image1, 'cam1')
         
-        cam1_coordinates = self.image_pipeline.pipeline(image1, 'cam1')
+        cam2_translation, cam2_rotation = self.image_pipeline.pipeline(image2, 'cam2')
+
         
-        cam2_coordinates = self.image_pipeline.pipeline(image2, 'cam2')
         
-        
-        while True:
-            transform1 = Transform()
-            transform1.translation = Vector3(cam1_coordinates[4], cam1_coordinates[5], cam1_coordinates[6])
-        
-            transform1.rotation = Quaternion(cam1_coordinates[0], cam1_coordinates[1], cam1_coordinates[2], cam1_coordinates[3])
-        
-            self.br.sendTransform((transform1.translation.x, transform1.translation.y, transform1.translation.z), (
-                                transform1.rotation.x, transform1.rotation.y, transform1.rotation.z, transform1.rotation.w), rospy.Time.now(), "camera1", "calibration_tag")
-            
-            transform2 = Transform()
-            transform2.translation = Vector3(cam2_coordinates[4], cam2_coordinates[5], cam2_coordinates[6])
-        
-            transform2.rotation = Quaternion(cam2_coordinates[0], cam2_coordinates[1], cam2_coordinates[2], cam2_coordinates[3])
-        
-            self.br.sendTransform((transform2.translation.x, transform2.translation.y, transform2.translation.z), (
-                                transform2.rotation.x, transform2.rotation.y, transform2.rotation.z, transform2.rotation.w), rospy.Time.now(), "camera2", "calibration_tag")
+        # while True:
+        if self.image_count >= 3:
+            while True:
+                rospy.loginfo("Camera 1 -> X: " + str(cam2_translation[0]) + "Y: " + str(cam2_translation[1]) + "Z: " + str(cam2_translation[2]))
+                rospy.loginfo("Camera 2 -> X: " + str(cam1_translation[0]) + "Y: " + str(cam1_translation[1]) + "Z: " + str(
+                    cam1_translation[2]))
+                transform1 = Transform()
+                transform1.translation = Vector3(cam1_translation[0], cam1_translation[1], cam1_translation[2])
+
+                transform1.rotation = Quaternion(cam1_rotation[0], cam1_rotation[1], cam1_rotation[2], cam1_rotation[3])
+
+                self.br.sendTransform((transform1.translation.x, transform1.translation.y, transform1.translation.z), (
+                                    transform1.rotation.x, transform1.rotation.y, transform1.rotation.z, transform1.rotation.w), rospy.Time.now(), "camera1", "calibration_tag")
+
+                transform2 = Transform()
+                transform2.translation = Vector3(cam2_translation[0], cam2_translation[1], cam2_translation[2])
+
+                transform2.rotation = Quaternion(cam2_rotation[0], cam2_rotation[1], cam2_rotation[2], cam2_rotation[3])
+
+                self.br.sendTransform((transform2.translation.x, transform2.translation.y, transform2.translation.z), (
+                                    transform2.rotation.x, transform2.rotation.y, transform2.rotation.z, transform2.rotation.w), rospy.Time.now(), "camera2", "calibration_tag")
+        else:
+            self.image_count = self.image_count + 1
 
 
     def run(self):
