@@ -88,28 +88,28 @@ class Image_Pipeline:
 
 
 
-                        new_mat = np.zeros((4,4), np.float32)
+                        mat = np.zeros((4,4), np.float32)
                         for i in range(3):
                             for j in range(3):
                                 if camera == 'cam1':
                                     self.cam1_rot[i][j] = rot_matrix[i][j]
                                 else:
                                     self.cam2_rot[i][j] = rot_matrix[i][j]
-                                new_mat[i][j] = rot_matrix[i][j]
+                                mat[i][j] = rot_matrix[i][j]
 
 
-                        new_mat[3,3] = 1
+                        mat[3,3] = 1
 
-                        new_mat[0, 3] = ptvecs[0][0]
-                        new_mat[1, 3] = ptvecs[1][0]
-                        new_mat[2, 3] = ptvecs[2][0]
+                        mat[0, 3] = ptvecs[0][0]
+                        mat[1, 3] = ptvecs[1][0]
+                        mat[2, 3] = ptvecs[2][0]
 
-                        mat = np.linalg.inv(new_mat)
-                        #rospy.loginfo(rot_matrix)
+                        mat = np.linalg.inv(mat)
+
                         # handle pos
                         orientation = quaternion_from_matrix(mat)
                         
-                        translation = [ptvecs[0][0], ptvecs[1][0], ptvecs[2][0]]
+                        translation = [mat[0,3 ], mat[1, 3], mat[2, 3]]
                         return translation, orientation
 
 
@@ -274,7 +274,7 @@ class Cam_Transform:
                                 transform1.rotation.x, transform1.rotation.y, transform1.rotation.z, transform1.rotation.w), rospy.Time.now(), "camera1", "calibration_tag")
 
             transform2 = Transform()
-            transform2.translation = Vector3(cam2_translation[1], cam2_translation[0], cam2_translation[2])
+            transform2.translation = Vector3(cam2_translation[0], cam2_translation[1], cam2_translation[2])
 
             transform2.rotation = Quaternion(cam2_rotation[0], cam2_rotation[1], cam2_rotation[2], cam2_rotation[3])
 

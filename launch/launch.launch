@@ -8,7 +8,7 @@
     </node>
     <!-- <node name="pipeline" pkg="ROS-Nursing-Robot-MQP-23-24" type="pipeline.py" output="screen" /> -->
     <!--node pkg="tf" type="static_transform_publisher" name="adjust" args="0 0 0 0 0 0 world adjust 100" / -->
-    <node pkg="tf" type="static_transform_publisher" name="calbration_tag" args="-0.73 -0.093 0 0 0 0 adjust calibration_tag 100" />
+    <node pkg="tf" type="static_transform_publisher" name="calbration_tag" args="-0.73 -0.093 0 1.57 0 0 adjust calibration_tag 100" />
 
 
 
