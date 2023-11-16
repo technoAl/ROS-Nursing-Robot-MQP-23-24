@@ -262,9 +262,9 @@ class Cam_Transform:
             # while True:
             # if self.image_count >= 10:
                 # while True:
-            # rospy.loginfo("Camera 1 -> X: " + str(cam2_translation[0]) + "Y: " + str(cam2_translation[1]) + "Z: " + str(cam2_translation[2]))
-            # rospy.loginfo("Camera 2 -> X: " + str(cam1_translation[0]) + "Y: " + str(cam1_translation[1]) + "Z: " + str(
-            #     cam1_translation[2]))
+            rospy.loginfo("Camera 2 -> X: " + str(cam2_translation[0]) + "Y: " + str(cam2_translation[1]) + "Z: " + str(cam2_translation[2]))
+            # rospy.loginfo("Camera 1 -> X: " + str(cam1_translation[0]) + "Y: " + str(cam1_translation[1]) + "Z: " + str(cam1_translation[2]))
+            
             transform1 = Transform()
             transform1.translation = Vector3(cam1_translation[0], cam1_translation[1], cam1_translation[2])
 
@@ -274,7 +274,7 @@ class Cam_Transform:
                                 transform1.rotation.x, transform1.rotation.y, transform1.rotation.z, transform1.rotation.w), rospy.Time.now(), "camera1", "calibration_tag")
 
             transform2 = Transform()
-            transform2.translation = Vector3(cam2_translation[1], cam2_translation[0], cam2_translation[2])
+            transform2.translation = Vector3(cam2_translation[0], cam2_translation[1], cam2_translation[2])
 
             transform2.rotation = Quaternion(cam2_rotation[0], cam2_rotation[1], cam2_rotation[2], cam2_rotation[3])
 
