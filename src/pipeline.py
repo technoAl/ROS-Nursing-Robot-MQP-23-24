@@ -392,7 +392,7 @@ class Pipeline:
                         self.br.sendTransform(
                             (transform.translation.x, transform.translation.y, transform.translation.z), (
                                 transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
-                            rospy.Time.now(), object_name, "camera")
+                            rospy.Time.now(), object_name, "camera_green")
             for tag in detections2:
                 if tag['id'] == ID:
                     center = tag['center']

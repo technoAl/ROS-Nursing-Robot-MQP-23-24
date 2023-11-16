@@ -271,7 +271,7 @@ class Cam_Transform:
             transform1.rotation = Quaternion(cam1_rotation[0], cam1_rotation[1], cam1_rotation[2], cam1_rotation[3])
 
             self.br.sendTransform((transform1.translation.x, transform1.translation.y, transform1.translation.z), (
-                                transform1.rotation.x, transform1.rotation.y, transform1.rotation.z, transform1.rotation.w), rospy.Time.now(), "camera1", "calibration_tag")
+                                transform1.rotation.x, transform1.rotation.y, transform1.rotation.z, transform1.rotation.w), rospy.Time.now(), "camera_green", "calibration_tag")
 
             transform2 = Transform()
             transform2.translation = Vector3(cam2_translation[0], cam2_translation[1], cam2_translation[2])
@@ -279,7 +279,7 @@ class Cam_Transform:
             transform2.rotation = Quaternion(cam2_rotation[0], cam2_rotation[1], cam2_rotation[2], cam2_rotation[3])
 
             self.br.sendTransform((transform2.translation.x, transform2.translation.y, transform2.translation.z), (
-                                transform2.rotation.x, transform2.rotation.y, transform2.rotation.z, transform2.rotation.w), rospy.Time.now(), "camera2", "calibration_tag")
+                                transform2.rotation.x, transform2.rotation.y, transform2.rotation.z, transform2.rotation.w), rospy.Time.now(), "camera_purple", "calibration_tag")
             # else:
             #     self.image_count = self.image_count + 1
 

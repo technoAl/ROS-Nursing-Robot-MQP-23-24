@@ -40,6 +40,12 @@ if __name__ == '__main__':
     prev_can_rot = Quaternion(base_quat[0], base_quat[1], base_quat[2], base_quat[3])
     prev_bottle_trans = Vector3(0, 0, 0)
     prev_bottle_rot = Quaternion(base_quat[0], base_quat[1], base_quat[2], base_quat[3])
+    prev_cam_green_trans = Vector3(0, 0, 0)
+    prev_cam_green_rot = Quaternion(base_quat[0], base_quat[1], base_quat[2], base_quat[3])
+    prev_cam_purple_trans = Vector3(0, 0, 0)
+    prev_cam_purple_rot = Quaternion(base_quat[0], base_quat[1], base_quat[2], base_quat[3])
+    prev_calibration_tag_trans = Vector3(0, 0, 0)
+    prev_calibration_tag_rot = Quaternion(base_quat[0], base_quat[1], base_quat[2], base_quat[3])
     rot_tolerance = 0.0
     trans_tolerance = 0.0
 
@@ -118,6 +124,60 @@ if __name__ == '__main__':
                 prev_bottle_rot = transform.rotation
         except:
             # rospy.logwarn("No Bottle 2")
+            pass
+        try:
+            (cam_green_trans, cam_green_rot) = listener.lookupTransform('/world', '/camera_green', rospy.Time(0))
+            cam_green_transform = TransformStamped()
+            transform = Transform()
+            transform.translation = Vector3(cam_green_trans[0], cam_green_trans[1], cam_green_trans[2])
+            transform.rotation = Quaternion(cam_green_rot[0], cam_green_rot[1], cam_green_rot[2], cam_green_rot[3])
+            cam_green_transform.transform = transform
+            cam_green_transform.header = generic_header
+            cam_green_transform.child_frame_id = "camera_green"
+            if cumulative_distance(prev_cam_green_trans, transform.translation, trans_tolerance, prev_cam_green_rot, transform.rotation, rot_tolerance) or True:
+                #can_pub.publish(tag_msg)
+                tag_msg.transforms.append(cam_green_transform)
+                prev_cam_green_trans = transform.translation
+                prev_cam_green_rot = transform.rotation
+
+        except:
+            #rospy.logwarn("No Corn Can Transform")
+            pass
+        try:
+            (cam_purple_trans, cam_purple_rot) = listener.lookupTransform('/world', '/camera_purple', rospy.Time(0))
+            cam_purple_transform = TransformStamped()
+            transform = Transform()
+            transform.translation = Vector3(cam_purple_trans[0], cam_purple_trans[1], cam_purple_trans[2])
+            transform.rotation = Quaternion(cam_purple_rot[0], cam_purple_rot[1], cam_purple_rot[2], cam_purple_rot[3])
+            cam_purple_transform.transform = transform
+            cam_purple_transform.header = generic_header
+            cam_purple_transform.child_frame_id = "camera_purple"
+            if cumulative_distance(prev_cam_purple_trans, transform.translation, trans_tolerance, prev_cam_purple_rot, transform.rotation, rot_tolerance) or True:
+                #can_pub.publish(tag_msg)
+                tag_msg.transforms.append(cam_purple_transform)
+                prev_cam_purple_trans = transform.translation
+                prev_cam_purple_rot = transform.rotation
+
+        except:
+            #rospy.logwarn("No Corn Can Transform")
+            pass
+        try:
+            (calibration_tag_trans, calibration_tag_rot) = listener.lookupTransform('/world', '/calibration_tag', rospy.Time(0))
+            calibration_tag_transform = TransformStamped()
+            transform = Transform()
+            transform.translation = Vector3(calibration_tag_trans[0], calibration_tag_trans[1], calibration_tag_trans[2])
+            transform.rotation = Quaternion(calibration_tag_rot[0], calibration_tag_rot[1], calibration_tag_rot[2], calibration_tag_rot[3])
+            calibration_tag_transform.transform = transform
+            calibration_tag_transform.header = generic_header
+            calibration_tag_transform.child_frame_id = "table"
+            if cumulative_distance(prev_calibration_tag_trans, transform.translation, trans_tolerance, prev_calibration_tag_rot, transform.rotation, rot_tolerance) or True:
+                #can_pub.publish(tag_msg)
+                tag_msg.transforms.append(calibration_tag_transform)
+                prev_calibration_tag_trans = transform.translation
+                prev_calibration_tag_rot = transform.rotation
+
+        except:
+            #rospy.logwarn("No Corn Can Transform")
             pass
         tf_pub.publish(tag_msg)
 
