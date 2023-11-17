@@ -265,9 +265,7 @@ class Cam_Transform:
             while self.image_count < 100:
                 cam1_translation, cam1_rotation = self.image_pipeline.pipeline(image1, 'cam1')
                 cam2_translation, cam2_rotation = self.image_pipeline.pipeline(image2, 'cam2')
-
-
-                self.image_count = self.image_count + 1 
+                
 
                 sum_x1 = sum_x1 + cam1_translation[0]
                 sum_y1 = sum_y1 + cam1_translation[1]
@@ -284,6 +282,8 @@ class Cam_Transform:
                 sum_qx2 = sum_qx2 + cam2_rotation[0] * cam2_rotation[3]
                 sum_qy2 = sum_qy2 + cam2_rotation[1] * cam2_rotation[3]
                 sum_qz2 = sum_qz2 + cam2_rotation[2] * cam2_rotation[3]
+
+                self.image_count = self.image_count + 1
 
             avg_x1 = sum_x1 / 100
             avg_y1 = sum_y1 / 100 
@@ -326,7 +326,9 @@ class Cam_Transform:
             transform1 = Transform()
             transform1.translation = Vector3(avg_x1, avg_y1, avg_z1)
     
-            transform1.rotation = Quaternion(q1[0], q1[1], q1[2], q1[3])
+            #transform1.rotation = Quaternion(q1[0], q1[1], q1[2], q1[3])
+            transform1.rotation = Quaternion(cam1_rotation[0], cam1_rotation[1], cam1_rotation[2], cam1_rotation[3])
+
 
             self.br.sendTransform((transform1.translation.x, transform1.translation.y, transform1.translation.z), (
                                 transform1.rotation.x, transform1.rotation.y, transform1.rotation.z, transform1.rotation.w), rospy.Time.now(), "camera_green", "calibration_tag")
@@ -334,7 +336,9 @@ class Cam_Transform:
             transform2 = Transform()
             transform2.translation = Vector3(avg_x2, avg_y2, avg_z2)
 
-            transform2.rotation = Quaternion(q2[0], q2[1], q2[2], q2[3])
+            #transform2.rotation = Quaternion(q2[0], q2[1], q2[2], q2[3])
+            transform2.rotation = Quaternion(cam2_rotation[0], cam2_rotation[1], cam2_rotation[2], cam2_rotation[3])
+
 
             self.br.sendTransform((transform2.translation.x, transform2.translation.y, transform2.translation.z), (
                                 transform2.rotation.x, transform2.rotation.y, transform2.rotation.z, transform2.rotation.w), rospy.Time.now(), "camera_purple", "calibration_tag")
@@ -343,9 +347,6 @@ class Cam_Transform:
 
         except Exception as e:
             rospy.loginfo(e)
-            cv2.imshow('cam2', image1)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
             pass
 
     def run(self):
