@@ -20,6 +20,17 @@ def cumulative_distance(prev_trans, trans, trans_tolerance, prev_rot, rot, rot_t
     else:
         return False
 
+def broadcast_object(lookup_name, child_frame_id, generic_header):
+    (trans, rot) = listener.lookupTransform('/world', lookup_name, rospy.Time(0))
+    transform_stamped = TransformStamped()
+    transform = Transform()
+    transform.translation = Vector3(trans[0], trans[1], trans[2])
+    transform.rotation = Quaternion(rot[0], rot[1], rot[2], rot[3])
+    transform_stamped.transform = transform
+    transform_stamped.header = generic_header
+    transform_stamped.child_frame_id = child_frame_id
+    return transform_stamped
+
 if __name__ == '__main__':
     rospy.sleep(2)
     rospy.init_node('unity_publisher')
@@ -65,60 +76,30 @@ if __name__ == '__main__':
         #     pass
 
         try:
-            (can_trans, can_rot) = listener.lookupTransform('/world', '/corn_can_center', rospy.Time(0))
-            can_transform = TransformStamped()
-            transform = Transform()
-            transform.translation = Vector3(can_trans[0], can_trans[1], can_trans[2])
-            transform.rotation = Quaternion(can_rot[0], can_rot[1], can_rot[2], can_rot[3])
-            can_transform.transform = transform
-            can_transform.header = generic_header
-            can_transform.child_frame_id = "corn_can"
-            if cumulative_distance(prev_can_trans, transform.translation, trans_tolerance, prev_can_rot, transform.rotation, rot_tolerance) or True:
-                #can_pub.publish(tag_msg)
-                tag_msg.transforms.append(can_transform)
-                prev_can_trans = transform.translation
-                prev_can_rot = transform.rotation
-
+            can_transform = broadcast_object('/corn_can_center', 'corn_can', generic_header)
+            tag_msg.transforms.append(can_transform)
         except:
             #rospy.logwarn("No Corn Can Transform")
             pass
 
         try:
-            (cube_trans, cube_rot) = listener.lookupTransform('/world', '/grey_cube_center',  rospy.Time(0))
-            cube_transform = TransformStamped()
-            transform = Transform()
-            transform.translation = Vector3(cube_trans[0], cube_trans[1], cube_trans[2])
-            transform.rotation = Quaternion(cube_rot[0], cube_rot[1], cube_rot[2], cube_rot[3])
-            cube_transform.transform = transform
-            cube_transform.header = generic_header
-            cube_transform.child_frame_id = "grey_cube"
-            if cumulative_distance(prev_cube_trans, transform.translation, trans_tolerance, prev_cube_rot, transform.rotation, rot_tolerance) or True:
-                #cube_pub.publish(tag_msg)
-                tag_msg.transforms.append(cube_transform)
-                prev_cube_trans = transform.translation
-                prev_cube_rot = transform.rotation
+            cube_transform = broadcast_object('/grey_cube_center', 'grey_cube', generic_header)
+            tag_msg.transforms.append(cube_transform)
 
         except:
             #rospy.logwarn(e)
             pass
 
         try:
-            (bot_2_trans, bot_2_rot) = listener.lookupTransform('/world', '/bottle_2_center',  rospy.Time(0))
-            bot_transform = TransformStamped()
-            transform = Transform()
-            transform.translation = Vector3(bot_2_trans[0], bot_2_trans[1], bot_2_trans[2])
-            transform.rotation = Quaternion(bot_2_rot[0], bot_2_rot[1], bot_2_rot[2], bot_2_rot[3])
-            bot_transform.transform = transform
-            bot_transform.header = generic_header
-            bot_transform.child_frame_id = "bottle_2"
-            if cumulative_distance(prev_bottle_trans, transform.translation, trans_tolerance, prev_bottle_rot, transform.rotation, rot_tolerance) or True:
-                #bottle_2_pub.publish(tag_msg)
-                tag_msg.transforms.append(bot_transform)
-                prev_bottle_trans = transform.translation
-                prev_bottle_rot = transform.rotation
+            cube_transform = broadcast_object('/bottle_2_center', 'bottle_2', generic_header)
+            tag_msg.transforms.append(cube_transform)
+
         except:
             # rospy.logwarn("No Bottle 2")
             pass
+        
         tf_pub.publish(tag_msg)
 
         rate.sleep()
+
+
