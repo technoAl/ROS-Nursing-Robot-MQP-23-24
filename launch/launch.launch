@@ -6,11 +6,17 @@
             <param name="tcp_ip" type="string" value="$(arg tcp_ip)"/>
             <param name="tcp_port" type="int" value="$(arg tcp_port)"/>
     </node>
-    <node name="pipeline" pkg="ROS-Nursing-Robot-MQP-23-24" type="pipeline.py" output="screen" />
-    <node pkg="tf" type="static_transform_publisher" name="camera" args="-0.651 -0.154 0.774 0 -3.14 0 adjust camera 100" />
-    <node pkg="tf" type="static_transform_publisher" name="grey_cube_center" args="0 0 -0.026 0 0 0 grey_cube grey_cube_center 100" />
+
+    <!-- <node name="pipeline" pkg="ROS-Nursing-Robot-MQP-23-24" type="pipeline.py" output="screen" /> -->
+    <!--node pkg="tf" type="static_transform_publisher" name="adjust" args="0 0 0 0 0 0 world adjust 100" / -->
+
+    <node pkg="tf" type="static_transform_publisher" name="calibration_tag" args="-0.73 -0.093 0 1.57079 0 0 adjust calibration_tag 100" />
+
+
+
+    <node pkg="tf" type="static_transform_publisher" name="grey_cube_center" args="0 0 -0.026 0 0 0 calibration_box grey_cube_center 100" />
     <node pkg="tf" type="static_transform_publisher" name="corn_can_center" args="0 0 -0.056 0 0 0 corn_can corn_can_center 100" />
-    <node pkg="tf" type="static_transform_publisher" name="bottle_2_center" args="0 0 -0.0475 0 0 0 bottle_2 bottle_2_center 100" />
+    <node name="cam_transform" pkg="ROS-Nursing-Robot-MQP-23-24" type="cam_transform.py" output="screen" />
     <node name="unity_publisher" pkg="ROS-Nursing-Robot-MQP-23-24" type="unity_publisher.py" output="screen" />
     <node name="teleop" pkg="ROS-Nursing-Robot-MQP-23-24" type="teleop.py" output="screen" />
     <node type="rviz" name="rviz" pkg="rviz" args="-d $(find ROS-Nursing-Robot-MQP-23-24)/rviz/rviz.rviz"/>
