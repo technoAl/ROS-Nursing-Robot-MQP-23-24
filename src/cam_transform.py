@@ -262,7 +262,7 @@ class Cam_Transform:
             # while True:
             # if self.image_count >= 10:
                 # while True:
-            rospy.loginfo("Camera 2 -> X: " + str(cam2_translation[0]) + "Y: " + str(cam2_translation[1]) + "Z: " + str(cam2_translation[2]))
+            #rospy.loginfo("Camera 2 -> X: " + str(cam2_translation[0]) + "Y: " + str(cam2_translation[1]) + "Z: " + str(cam2_translation[2]))
             # rospy.loginfo("Camera 1 -> X: " + str(cam1_translation[0]) + "Y: " + str(cam1_translation[1]) + "Z: " + str(cam1_translation[2]))
             
             transform1 = Transform()
