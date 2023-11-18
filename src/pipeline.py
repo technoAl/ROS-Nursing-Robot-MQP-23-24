@@ -20,7 +20,6 @@ from std_msgs.msg import Float32
 import statistics
 
 
-
 def object_points(tag_size):
     return [[-tag_size / 2, tag_size / 2, 0.0],
             [tag_size / 2, tag_size / 2, 0.0],
@@ -151,6 +150,7 @@ class previousReadings:
         self.previousFour = [0, 0, 0, 0]
         self.prevCounter = 0
         self.inMotion = False
+
         self.prevTrans = 0
         self.threshold = 0.03
 
@@ -218,6 +218,7 @@ class previousReadings:
                 d = pow((pow(new_x , 2) + pow(new_y, 2) + pow(new_z, 2) + pow(new_w, 2)) , 0.5)
 
                 return (new_x, new_y, new_z, new_w)/d
+
 class Pipeline:
 
     def __init__(self):
@@ -278,7 +279,7 @@ class Pipeline:
         self.profile2 = self.rsconfig2.resolve(self.rspipeline2)
 
         ### Making robot go 10Hz
-        self.rate = rospy.Rate(60)
+        self.rate = rospy.Rate(30)
         self.count = 0
 
         self.br.sendTransform((0, 0, 0), tf.transformations.quaternion_from_euler(0, 0, 0), rospy.Time.now(), "adjust",
@@ -559,6 +560,7 @@ class Pipeline:
                 transform.rotation = Quaternion(quaternion[0], quaternion[1], quaternion[2], quaternion[3])
                 self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), object_name + "_purple", "camera_purple")
 
+
         # gray_image1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
         # gray_image2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
         #
@@ -693,10 +695,10 @@ class Pipeline:
         time.sleep(1)
         rospy.loginfo("Starting cam 2")
         self.rspipeline2.start(self.rsconfig2)
+
         while not rospy.is_shutdown():
             self.update_current_image()
         rospy.spin()
-
 
 if __name__ == '__main__':
     Pipeline().run()
