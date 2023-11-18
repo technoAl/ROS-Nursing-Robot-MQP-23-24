@@ -35,6 +35,7 @@ if __name__ == '__main__':
     rospy.sleep(2)
     rospy.init_node('unity_publisher')
     listener = tf.TransformListener(cache_time=rospy.Duration(0.5))
+    broadcaster = tf.TransformBroadcaster()
 
     tf_pub = rospy.Publisher('/objects', TFMessage, queue_size=1)
 
@@ -60,6 +61,7 @@ if __name__ == '__main__':
         #     pass
 
         try:
+
             can_transform = broadcast_object('/corn_can_center', 'corn_can', generic_header)
             tag_msg.transforms.append(can_transform)
         except:
@@ -70,8 +72,8 @@ if __name__ == '__main__':
             cube_transform = broadcast_object('/grey_cube_center', 'grey_cube', generic_header)
             tag_msg.transforms.append(cube_transform)
 
-        except:
-            #rospy.logwarn(e)
+        except Exception as e:
+            rospy.logwarn(e)
             pass
 
         try:
