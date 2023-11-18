@@ -3,14 +3,14 @@
 import rospy
 import time 
 import math
-from std_msgs.msg import Header
+from std_msgs.msg import Header, String
 import numpy as np 
 import cv2
 from apriltag import apriltag
 import tf
 from std_msgs.msg import Float32
 from geometry_msgs.msg import Quaternion, TransformStamped, Vector3, Transform
-from tf.transformations import quaternion_from_euler, quaternion_from_matrix
+from tf.transformations import quaternion_from_euler, quaternion_from_matrix, quaternion_matrix
 import pyrealsense2 as rs
 
 
@@ -28,10 +28,10 @@ class Image_Pipeline:
                                          [0, 0, 1]])
         self.cam2_intrinsics = np.zeros((3,3))
         self.br = tf.TransformBroadcaster()
-        self.cam1_rot = np.zeros((3,3))
-        self.cam2_rot = np.zeros((3, 3))
+        self.cam1_rot = np.zeros((4, 4))
+        self.cam2_rot = np.zeros((4, 4))
         
-    def pipeline(self, image, camera):
+    def cam_pipeline(self, image, camera):
         
         intrinsics_mat = self.cam1_intrinsics
         '''if camera == 'cam1':
@@ -93,11 +93,19 @@ class Image_Pipeline:
                             for j in range(3):
                                 if camera == 'cam1':
                                     self.cam1_rot[i][j] = rot_matrix[i][j]
+                                    self.cam1_rot[0,3] = ptvecs[0][0]
+                                    self.cam1_rot[1,3] = ptvecs[1][0]
+                                    self.cam1_rot[2,3] = ptvecs[2][0]
+
                                 else:
                                     self.cam2_rot[i][j] = rot_matrix[i][j]
+                                    self.cam2_rot[0,3] = ptvecs[0][0]
+                                    self.cam2_rot[1,3] = ptvecs[1][0]
+                                    self.cam2_rot[2,3] = ptvecs[2][0]
+
                                 mat[i][j] = rot_matrix[i][j]
 
-
+                
                         mat[3,3] = 1
 
                         mat[0, 3] = ptvecs[0][0]
@@ -109,7 +117,7 @@ class Image_Pipeline:
                         # handle pos
                         orientation = quaternion_from_matrix(mat)
                         
-                        translation = [mat[0,3 ], mat[1, 3], mat[2, 3]]
+                        translation = [mat[0, 3], mat[1, 3], mat[2, 3]]
                         return translation, orientation
 
 
@@ -118,7 +126,7 @@ class Cam_Transform:
       
     def __init__(self):
         ### Initialize node, name it 'lab2'
-        rospy.init_node('cam_transform')
+        #rospy.init_node('cam_transform')
         self.cam1serial = '936322072225'
         self.cam2serial = '825412070317'
         self.br = tf.TransformBroadcaster()
@@ -129,7 +137,7 @@ class Cam_Transform:
 
         self.current_image = 0
         self.intrinsics = 0
-        self.plot_publisher = rospy.Publisher('/plot/value', Float32, queue_size=10)
+
         
         self.image_pipeline = Image_Pipeline()
 
@@ -178,9 +186,19 @@ class Cam_Transform:
         self.profile2 = self.rsconfig2.resolve(self.rspipeline2)
 
         ### Making robot go 10Hz
-        self.rate = rospy.Rate(60)
         self.br.sendTransform((0, 0, 0), tf.transformations.quaternion_from_euler(0, 0, 0), rospy.Time.now(), "adjust",
                               "world")
+
+        self.publish_ready = rospy.Publisher('/status', String, queue_size=10)
+
+        self.t1 = [0.0, 0.0, 0.0]
+        self.q1 = [0.0, 0.0, 0.0, 0.0]
+
+        self.t2 = [0.0, 0.0, 0.0]
+        self.q2 = [0.0, 0.0, 0.0, 0.0]
+
+
+        self.listener = tf.TransformListener()
 
         self.sample_done = False
 
@@ -253,58 +271,118 @@ class Cam_Transform:
             self.rspipeline1.stop()
             self.rspipeline2.stop()
 
+    # def cam_matricies(self, t1, q1, t2, q2):
+    #
+    #     matrix1 = quaternion_matrix(q1)
+    #
+    #     matrix1[0,3] = t1[0]
+    #     matrix1[1,3] = t1[1]
+    #     matrix1[2,3] = t1[2]
+    #
+    #     cam1_adjust_t, cam1_adjust_r = self.listener.lookupTransform('/adjust', 'camera_purple', rospy.Time(0))
+    #
+    #     cam1_adjust = quaternion_matrix(cam1_adjust_r)
+    #
+    #     cam1_adjust[0,3] = cam1_adjust_t[0]
+    #     cam1_adjust[1,3] = cam1_adjust_t[1]
+    #     cam1_adjust[2,3] = cam1_adjust_t[2]
+    #
+    #     cam1_matrix = matrix * np.linalg.inv(cam1_adjust)
+    #
+    #     new_t1 = [cam1_matrix[0,3], cam1_matrix[1,3], cam1_matrix[2,3]]
+    #
+    #     orientation1 = quaternion_from_matrix(cam1_matrix)
+    #
+    #     matrix2 = quaternion_matrix(q2)
+    #
+    #     matrix2[0,3] = t2[0]
+    #     matrix2[1,3] = t2[1]
+    #     matrix2[2,3] = t2[2]
+    #
+    #
+    #     cam2_adjust_t, cam2_adjust_r = self.listener.lookupTransform('/adjust', 'camera_green', rospy.Time(0))
+    #
+    #     cam2_adjust = quaternion_matrix(cam2_adjust_r)
+    #
+    #     cam2_adjust[0,3] = cam2_adjust_t[0]
+    #     cam2_adjust[1,3] = cam2_adjust_t[1]
+    #     cam2_adjust[2,3] = cam2_adjust_t[2]
+    #
+    #     cam2_matrix = matrix2 * np.linalg.inv(cam2_adjust)
+    #
+    #     new_t2 = [cam2_matrix[0,3], cam2_matrix[1,3], cam2_matrix[2,3]]
+    #
+    #     orientation2 = quaternion_from_matrix(cam2_matrix)
+    #
+    #     p2 = Pose()
+    #
+    #     p2.position.x = new_t2[0]
+    #     p2.position.y = new_t2[1]
+    #     p2.position.z = new_t2[2]
+    #
+    #     p2.orientation.x = orientation2[0]
+    #     p2.orientation.y = orientation2[1]
+    #     p2.orientation.z = orientation2[2]
+    #     p2.orientation.w = orientation2[3]
+    #
+    #
+    #     self.cam1_publish.publish(p1)
+    #     self.cam2_publish.publish(p2)
+    #     self.status.publish("Ready")
+    #
+    #
+    #     return new_t1, orientation1, new_t2, orientation2
+
     def broadcaster(self, image1, image2):
 
         try:
-            #rospy.loginfo("Image 1")
-            #rospy.loginfo(self.image_pipeline.pipeline(image1, 'cam1'))
-            cam1_translation, cam1_rotation = self.image_pipeline.pipeline(image1, 'cam1')
-            cam2_translation, cam2_rotation = self.image_pipeline.pipeline(image2, 'cam2')
+
             if self.sample_done == False:
-                sum_x1 = sum_y1 = sum_z1 = sum_qx1 = sum_qy1 = sum_qz1 = sum_qw1 = sum_x2 = sum_y2 = sum_z2 = sum_qx2 = sum_qy2 = sum_qz2 = sum_qw2 = 0.0
+
+                sum_cam1 = [0] * 6
+                sum_cam2 = [0] * 6
 
                 rospy.loginfo("Initiating Sampling")
                 # while True:
                 while self.image_count < 100:
-                    cam1_translation, cam1_rotation = self.image_pipeline.pipeline(image1, 'cam1')
-                    cam2_translation, cam2_rotation = self.image_pipeline.pipeline(image2, 'cam2')
+                    cam1_translation, cam1_rotation = self.image_pipeline.cam_pipeline(image1, 'cam1')
+                    cam2_translation, cam2_rotation = self.image_pipeline.cam_pipeline(image2, 'cam2')
 
-                    sum_x1 = sum_x1 + cam1_translation[0]
-                    sum_y1 = sum_y1 + cam1_translation[1]
-                    sum_z1 = sum_z1 + cam1_translation[2]
+                    sum_cam1[0] = sum_cam1[0] + cam1_translation[0]
+                    sum_cam1[1] = sum_cam1[1] + cam1_translation[1]
+                    sum_cam1[2] = sum_cam1[2] + cam1_translation[2]
 
-                    sum_x2 = sum_x2 + cam2_translation[0]
-                    sum_y2 = sum_y2 + cam2_translation[1]
-                    sum_z2 = sum_z2 + cam2_translation[2]
+                    sum_cam1[3] = sum_cam1[3] + cam1_rotation[0] * cam1_rotation[3]
+                    sum_cam1[4] = sum_cam1[4] + cam1_rotation[1] * cam1_rotation[3]
+                    sum_cam1[5] = sum_cam1[5] + cam1_rotation[2] * cam1_rotation[3]
 
-                    sum_qx1 = sum_qx1 + cam1_rotation[0] * cam1_rotation[3]
-                    sum_qy1 = sum_qy1 + cam1_rotation[1] * cam1_rotation[3]
-                    sum_qz1 = sum_qz1 + cam1_rotation[2] * cam1_rotation[3]
+                    sum_cam2[0] = sum_cam2[0] + cam2_translation[0]
+                    sum_cam2[1] = sum_cam2[1] + cam2_translation[1]
+                    sum_cam2[2] = sum_cam2[2] + cam2_translation[2]
 
-                    sum_qx2 = sum_qx2 + cam2_rotation[0] * cam2_rotation[3]
-                    sum_qy2 = sum_qy2 + cam2_rotation[1] * cam2_rotation[3]
-                    sum_qz2 = sum_qz2 + cam2_rotation[2] * cam2_rotation[3]
-
+                    sum_cam2[3] = sum_cam2[3] + cam2_rotation[0] * cam2_rotation[3]
+                    sum_cam2[4] = sum_cam2[4] + cam2_rotation[1] * cam2_rotation[3]
+                    sum_cam2[5] = sum_cam2[5] + cam2_rotation[2] * cam2_rotation[3]
 
                     self.image_count = self.image_count + 1
 
                 rospy.loginfo("Finishing Sampling")
 
-                avg_x1 = sum_x1 / 100
-                avg_y1 = sum_y1 / 100
-                avg_z1 = sum_z1 / 100
+                avg_x1 = sum_cam1[0] / 100.0
+                avg_y1 = sum_cam1[1] / 100.0
+                avg_z1 = sum_cam1[2] / 100.0
 
-                avg_x2 = sum_x2 / 100
-                avg_y2 = sum_y2 / 100
-                avg_z2 = sum_z2 / 100
+                avg_qx1 = sum_cam1[3] / 100.0
+                avg_qy1 = sum_cam1[4] / 100.0
+                avg_qz1 = sum_cam1[5] / 100.0
 
-                avg_qx1 = sum_qx1 / 100
-                avg_qy1 = sum_qy1 / 100
-                avg_qz1 = sum_qz1 / 100
+                avg_x2 = sum_cam2[0] / 100.0
+                avg_y2 = sum_cam2[1] / 100.0
+                avg_z2 = sum_cam2[2] / 100.0
 
-                avg_qx2 = sum_qx2 / 100
-                avg_qy2 = sum_qy2 / 100
-                avg_qz2 = sum_qz2 / 100
+                avg_qx2 = sum_cam2[3] / 100.0
+                avg_qy2 = sum_cam2[4] / 100.0
+                avg_qz2 = sum_cam2[5] / 100.0
 
                 w1 = pow((pow(avg_qx1, 2) + pow(avg_qy1, 2) + pow(avg_qz1, 2)), 0.5)
                 w2 = pow((pow(avg_qx2, 2) + pow(avg_qy2, 2) + pow(avg_qz2, 2)), 0.5)
@@ -317,51 +395,60 @@ class Cam_Transform:
                 avg_qy2 = avg_qy2 / w2
                 avg_qz2 = avg_qz2 / w2
 
-                d1 = pow((pow(avg_qx1 , 2) + pow(avg_qy1, 2) + pow(avg_qz1, 2) + pow(w1, 2)) , 0.5)
-                d2 = pow((pow(avg_qx2 , 2) + pow(avg_qy2, 2) + pow(avg_qz2, 2) + pow(w2, 2)) , 0.5)
-
-                q1 = (avg_qx1, avg_qy1, avg_qz1, w1)/d1
-                q2 = (avg_qx2, avg_qy2, avg_qz2, w2)/d2
+                d1 = pow((pow(avg_qx1, 2) + pow(avg_qy1, 2) + pow(avg_qz1, 2) + pow(w1, 2)), 0.5)
+                d2 = pow((pow(avg_qx2, 2) + pow(avg_qy2, 2) + pow(avg_qz2, 2) + pow(w2, 2)), 0.5)
 
 
-                    # while True:
-                #rospy.loginfo("Camera 2 -> X: " + str(cam2_translation[0]) + "Y: " + str(cam2_translation[1]) + "Z: " + str(cam2_translation[2]))
-                # rospy.loginfo("Camera 1 -> X: " + str(cam1_translation[0]) + "Y: " + str(cam1_translation[1]) + "Z: " + str(cam1_translation[2]))
+                self.t1[0] = avg_x1
+                self.t1[1] = avg_y1
+                self.t1[2] = avg_z1
 
-                transform1 = Transform()
-                transform1.translation = Vector3(avg_x1, avg_y1, avg_z1)
-                transform1.rotation = Quaternion(q1[0], q1[1], q1[2], q1[3])
+                quat_1 = (avg_qx1, avg_qy1, avg_qz1, w1)/d1
 
-                transform2 = Transform()
-                transform2.translation = Vector3(avg_x2, avg_y2, avg_z2)
-                transform2.rotation = Quaternion(q2[0], q2[1], q2[2], q2[3])
+                self.q1[0] = quat_1[0]
+                self.q1[1] = quat_1[1]
+                self.q1[2] = quat_1[2]
+                self.q1[3] = quat_1[3]
 
-                self.br.sendTransform((transform1.translation.x, transform1.translation.y, transform1.translation.z), (
-                    transform1.rotation.x, transform1.rotation.y, transform1.rotation.z, transform1.rotation.w),
-                                      rospy.Time.now(), "camera_green", "calibration_tag")
+                self.t2[0] = avg_x2
+                self.t2[1] = avg_y2
+                self.t2[2] = avg_z2
 
-                self.br.sendTransform((transform2.translation.x, transform2.translation.y, transform2.translation.z), (
-                    transform2.rotation.x, transform2.rotation.y, transform2.rotation.z, transform2.rotation.w),
-                                      rospy.Time.now(), "camera_purple", "calibration_tag")
+                quat_2 = (avg_qx2, avg_qy2, avg_qz2, w2)/d2
+
+                self.q2[0] = quat_2[0]
+                self.q2[1] = quat_2[1]
+                self.q2[2] = quat_2[2]
+                self.q2[3] = quat_2[3]
 
                 self.sample_done = True
 
 
-    
+            transform1 = Transform()
+            transform1.translation = Vector3(self.t1[0], self.t1[1], self.t1[2])
+            transform1.rotation = Quaternion(self.q1[0], self.q1[1], self.q1[2], self.q1[3])
 
-            # #transform1.rotation = Quaternion(cam1_rotation[0], cam1_rotation[1], cam1_rotation[2], cam1_rotation[3])
-            # self.br.sendTransform((transform1.translation.x, transform1.translation.y, transform1.translation.z), (
-            #                     transform1.rotation.x, transform1.rotation.y, transform1.rotation.z, transform1.rotation.w), rospy.Time.now(), "camera_green", "calibration_tag")
-            #
-            # #transform2.rotation = Quaternion(cam2_rotation[0], cam2_rotation[1], cam2_rotation[2], cam2_rotation[3])
-            # self.br.sendTransform((transform2.translation.x, transform2.translation.y, transform2.translation.z), (
-            #                     transform2.rotation.x, transform2.rotation.y, transform2.rotation.z, transform2.rotation.w), rospy.Time.now(), "camera_purple", "calibration_tag")
-            # else:
-            #     self.image_count = self.image_count + 1
+            transform2 = Transform()
+            transform2.translation = Vector3(self.t2[0], self.t2[1], self.t2[2])
+            transform2.rotation = Quaternion(self.q2[0], self.q2[1], self.q2[2], self.q2[3])
+
+            self.br.sendTransform((transform1.translation.x, transform1.translation.y, transform1.translation.z), (
+                transform1.rotation.x, transform1.rotation.y, transform1.rotation.z, transform1.rotation.w),
+                                  rospy.Time.now(), "camera_green", "calibration_tag")
+
+            self.br.sendTransform((transform2.translation.x, transform2.translation.y, transform2.translation.z), (
+                transform2.rotation.x, transform2.rotation.y, transform2.rotation.z, transform2.rotation.w),
+                                  rospy.Time.now(), "camera_purple", "calibration_tag")
+
+            self.rspipeline1.stop()
+            self.rspipeline2.stop()
+            self.publish_ready.publish("Ready")
 
         except Exception as e:
             rospy.loginfo(e)
             pass
+
+
 
     def run(self):
         r = rospy.Rate(60)
