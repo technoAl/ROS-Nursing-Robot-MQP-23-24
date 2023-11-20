@@ -433,11 +433,13 @@ class Pipeline:
 
         self.br.sendTransform((transform1.translation.x, transform1.translation.y, transform1.translation.z), (
             transform1.rotation.x, transform1.rotation.y, transform1.rotation.z, transform1.rotation.w),
-                              rospy.Time.now(), "camera_green", "calibration_tag")
+                              rospy.Time.now(), "camera_green", "adjust_objects")
 
         self.br.sendTransform((transform2.translation.x, transform2.translation.y, transform2.translation.z), (
             transform2.rotation.x, transform2.rotation.y, transform2.rotation.z, transform2.rotation.w),
-                              rospy.Time.now(), "camera_purple", "calibration_tag")
+                              rospy.Time.now(), "camera_purple", "adjust_objects")
+
+
 
     def update_current_image(self):
 

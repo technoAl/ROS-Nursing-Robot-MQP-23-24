@@ -58,10 +58,10 @@ if __name__ == '__main__':
             rospy.signal_shutdown("Interrupt")
 
         br.sendTransform(
-            (x, y, z), tf.transformations.quaternion_from_euler(0, 0, 0),
+            (0, 0, table_z), tf.transformations.quaternion_from_euler(0, 0, 0),
             rospy.Time.now(), "adjust", "world")
         br.sendTransform(
-            (0, 0, table_z), tf.transformations.quaternion_from_euler(0, 0, 0),
-            rospy.Time.now(), "adjust_table", "adjust")
+            (x, y, z), tf.transformations.quaternion_from_euler(0, 0, 0),
+            rospy.Time.now(), "adjust_objects", "calibration_tag")
 
 

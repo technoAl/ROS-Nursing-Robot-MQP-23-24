@@ -13,6 +13,8 @@
 
     <node pkg="tf" type="static_transform_publisher" name="grey_cube_center" args="0 0 -0.026 0 0 0 grey_cube grey_cube_center 100" />
     <node pkg="tf" type="static_transform_publisher" name="corn_can_center" args="0 0 -0.056 0 0 0 corn_can corn_can_center 100" />
+    <node pkg="tf" type="static_transform_publisher" name="bottle_2_center" args="0 0 -0.046 0 0 0 bottle_2 bottle_2_center 100" />
+
     <node name="unity_publisher" pkg="ROS-Nursing-Robot-MQP-23-24" type="unity_publisher.py" output="screen" />
     <node name="intermediate_publisher" pkg="ROS-Nursing-Robot-MQP-23-24" type="intermediate_publisher.py" output="screen" />
     <node name="teleop" pkg="ROS-Nursing-Robot-MQP-23-24" type="teleop.py" output="screen" />

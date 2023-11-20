@@ -77,7 +77,7 @@ if __name__ == '__main__':
     rospy.init_node('intermediate_publisher')
     listener = tf.TransformListener(cache_time=rospy.Duration(0.5))
     broadcaster = tf.TransformBroadcaster()
-
+    rospy.sleep(5)
     rate = rospy.Rate(60)
     while not rospy.is_shutdown():
         tag_msg = TFMessage()
@@ -150,12 +150,12 @@ if __name__ == '__main__':
             (trans1, rot1) = listener.lookupTransform('/world', '/bottle_2_green', rospy.Time(0))
             (trans2, rot2) = listener.lookupTransform('/world', '/bottle_2_purple', rospy.Time(0))
 
-            bottle_trans, bottle_trans = average_positions(trans1, rot1, trans2, rot2)
+            bottle_trans, bottle_rot = average_positions(trans1, rot1, trans2, rot2)
 
             bottle_transform = Transform()
 
             bottle_transform.translation = Vector3(bottle_trans[0], bottle_trans[1], bottle_trans[2])
-            bottle_transform.rotation = Quaternion(bottle_trans[0], bottle_trans[1], bottle_trans[2], bottle_trans[3])
+            bottle_transform.rotation = Quaternion(bottle_rot[0], bottle_rot[1], bottle_rot[2], bottle_rot[3])
 
             broadcaster.sendTransform(
                 (bottle_transform.translation.x, bottle_transform.translation.y, bottle_transform.translation.z), (

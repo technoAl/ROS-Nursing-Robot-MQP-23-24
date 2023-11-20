@@ -14,7 +14,7 @@ class TabButtons(Layout):
         super().__init__(cols)
         self._frame = frame
         self._frame.background = "black"
-        for i,_ in enumerate(cols):
+        for i, _ in enumerate(cols):
             self.add_widget(Divider(), i)
         btns = [Button("Interfaces", self._on_click_1),
                 Button("Btn2", self._on_click_2),
@@ -48,7 +48,7 @@ class RootPage(Frame):
                          screen.width,
                          can_scroll=False,
                          title="Root Page")
-        layout1 = Layout([1], fill_frame=True)
+        layout1 = Layout([1, 1], fill_frame=True)
         self.add_layout(layout1)
         # add your widgets here
         btns = [Button("Grab", self._intGrab),
@@ -58,23 +58,34 @@ class RootPage(Frame):
         for i, btn in enumerate(btns):
             layout1.add_widget(btn, 0)
 
+        btns = [Button("Show Lables", self._intShowLables),
+                Button("Hide Lables", self._intHideLables)]
+        for i, btn in enumerate(btns):
+            layout1.add_widget(btn, 1)
+
         layout2 = TabButtons(self, 0)
         self.add_layout(layout2)
         self.fix()
 
     def _intGrab(self):
         os.system("rostopic pub -1 /statemanager/command std_msgs/String \"data: selector_type grab\"> /dev/null&")
-    
+
     def _intGrabSel(self):
-        os.system("rostopic pub -1 /statemanager/command std_msgs/String \"data: selector_type grab_select\"> /dev/null&")
-    
+        os.system(
+            "rostopic pub -1 /statemanager/command std_msgs/String \"data: selector_type grab_select\"> /dev/null&")
+
     def _intPointSel(self):
-        os.system("rostopic pub -1 /statemanager/command std_msgs/String \"data: selector_type point_select\"> /dev/null&")
+        os.system(
+            "rostopic pub -1 /statemanager/command std_msgs/String \"data: selector_type point_select\"> /dev/null&")
 
     def _intGaze(self):
         os.system("rostopic pub -1 /statemanager/command std_msgs/String \"data: selector_type gaze\"> /dev/null&")
 
+    def _intShowLables(self):
+        os.system("rostopic pub -1 /statemanager/command std_msgs/String \"data: show lables\"> /dev/null&")
 
+    def _intHideLables(self):
+        os.system("rostopic pub -1 /statemanager/command std_msgs/String \"data: hide lables\"> /dev/null&")
 
 
 class AlphaPage(Frame):
@@ -87,7 +98,7 @@ class AlphaPage(Frame):
         layout1 = Layout([1], fill_frame=True)
         self.add_layout(layout1)
         # add your widgets here
-        
+
         layout2 = TabButtons(self, 1)
         self.add_layout(layout2)
         self.fix()
