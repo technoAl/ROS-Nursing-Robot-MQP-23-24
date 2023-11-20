@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import rospy
-import cam_transform
 import time
 import math
 from std_msgs.msg import Header, String
@@ -45,7 +44,7 @@ class Image_Processing:
         self.cam2_rot = np.zeros((4, 4))
 
 
-    def processor(self, image, in_init):
+    def pipeline(self, image, in_init):
 
 
         intrinsics_mat = self.cam1_intrinsics
@@ -76,13 +75,8 @@ class Image_Processing:
                 for i in range(4):
                     lt_rt_rb_lb[i] = lb_rb_rt_lt[3 - i]
 
-                # rospy.loginfo(lt_rt_rb_lb)
-
-                # time1 = self.current_milli_time()
                 good, prvecs, ptvecs = cv2.solvePnP(obj_pts, lt_rt_rb_lb, intrinsics_mat, (),
                                                     flags=cv2.SOLVEPNP_IPPE_SQUARE)
-                # time2 = self.current_milli_time()
-                # rospy.loginfo("Solver Time " + str(time2 - time1))
 
                 if good:
 
@@ -141,83 +135,6 @@ class Image_Processing:
                     found_objects[object_name] = (translation, orientation)
 
         return found_objects
-
-
-class previousReadings:
-    def __init__(self):
-        self.initialized = False
-        self.previousQuat = [0, 0, 0, 0]
-        self.previousFour = [0, 0, 0, 0]
-        self.prevCounter = 0
-        self.inMotion = False
-
-        self.prevTrans = 0
-        self.threshold = 0.03
-
-        # use for normal distribution
-        # self.rolling_values = np.zeros(20)
-        # self.rolling_index = 0
-
-        # use for entropy
-        self.rolling_values = []
-    def filter_readings(self, orientation):
-        self.rolling_values.append(orientation)
-
-        if len(self.rolling_values) > 16:
-            self.rolling_values.pop(0)
-
-        sum_x, sum_y, sum_z = 0, 0, 0
-        diff = 0
-        avgs = []
-        for i in range(len(self.rolling_values)): # Calc distance amongst every quaternion to see if we are moving as well as average out quaternions for filter
-
-            sum = 0
-
-            for j in range(len(self.rolling_values)):
-                q = pyQuaternion(axis=[self.rolling_values[i][0], self.rolling_values[i][1], self.rolling_values[i][2]], angle=self.rolling_values[i][3])
-                r = pyQuaternion(axis=[self.rolling_values[j][0], self.rolling_values[j][1], self.rolling_values[j][2]], angle=self.rolling_values[j][3])
-                sum = sum + pyQuaternion.distance(q, r)
-
-            avg = round(sum / len(self.rolling_values), 5)
-            avgs.append(avg)
-            diff = diff + avg
-
-        avg_diff = diff / len(self.rolling_values) # Average difference among quaternions
-
-        sorted_avgs = sorted(avgs)
-        if len(avgs) < 7:
-            return orientation
-        else:
-            if (avg_diff > 0.035): # If moving use median filter
-                #rospy.loginfo("Moving")
-                #self.still_count = 0
-                return orientation
-            else: # If we are still, average out the quaternions
-                #rospy.loginfo("Still")
-                #rospy.loginfo(avg_diff)
-                for k in range(len(sorted_avgs) - 6):
-                    index = avgs.index(sorted_avgs[k])
-                    x = self.rolling_values[index][0]
-                    y = self.rolling_values[index][1]
-                    z = self.rolling_values[index][2]
-                    w = self.rolling_values[index][3]
-                    sum_x = sum_x + w * x
-                    sum_y = sum_y + w * y
-                    sum_z = sum_z + w * z
-
-                avg_x = sum_x / (len(self.rolling_values) - 6)
-                avg_y = sum_y / (len(self.rolling_values) - 6)
-                avg_z = sum_z / (len(self.rolling_values) - 6)
-
-                new_w = pow((pow(avg_x , 2) + pow(avg_y, 2) + pow(avg_z, 2)) , 0.5)
-
-                new_x = avg_x / new_w
-                new_y = avg_y / new_w
-                new_z = avg_z / new_w
-
-                d = pow((pow(new_x , 2) + pow(new_y, 2) + pow(new_z, 2) + pow(new_w, 2)) , 0.5)
-
-                return (new_x, new_y, new_z, new_w)/d
 
 class Pipeline:
 
@@ -299,8 +216,6 @@ class Pipeline:
         self.image_count = 0
 
         self.tagIDs = [0, 1, 2]
-        self.boxVal = previousReadings()
-        self.canVal = previousReadings()
 
         self.processor = Image_Processing()
 
@@ -320,8 +235,6 @@ class Pipeline:
         rospy.sleep(2)
         self.br.sendTransform((0, 0, 0), tf.transformations.quaternion_from_euler(0, 0, 0), rospy.Time.now(), "adjust",
                               "world")
-
-
         self.object_name_list = ["grey_cube", "corn_can", "bottle_2"]
         rospy.sleep(1)
 
@@ -332,71 +245,17 @@ class Pipeline:
 
         while self.sample_done == False:
 
-            sum_cam1 = [0] * 6
-            sum_cam2 = [0] * 6
-
             rospy.loginfo("Initiating Sampling")
-            # while True:
             while self.image_count < 10:
                 self.image_count = self.image_count + 1
-            found_tag = self.processor.processor(image1, True)
+            found_tag = self.processor.pipeline(image1, True)
             cam1_translation = found_tag['tag'][0]
             cam1_rotation = found_tag['tag'][1]
 
-            found_tag = self.processor.processor(image2, True)
+            found_tag = self.processor.pipeline(image2, True)
             cam2_translation = found_tag['tag'][0]
             cam2_rotation = found_tag['tag'][1]
-                #
-                # sum_cam1[0] = sum_cam1[0] + cam1_translation[0]
-                # sum_cam1[1] = sum_cam1[1] + cam1_translation[1]
-                # sum_cam1[2] = sum_cam1[2] + cam1_translation[2]
-                #
-                # sum_cam1[3] = sum_cam1[3] + cam1_rotation[0] * cam1_rotation[3]
-                # sum_cam1[4] = sum_cam1[4] + cam1_rotation[1] * cam1_rotation[3]
-                # sum_cam1[5] = sum_cam1[5] + cam1_rotation[2] * cam1_rotation[3]
-                #
-                # sum_cam2[0] = sum_cam2[0] + cam2_translation[0]
-                # sum_cam2[1] = sum_cam2[1] + cam2_translation[1]
-                # sum_cam2[2] = sum_cam2[2] + cam2_translation[2]
-                #
-                # sum_cam2[3] = sum_cam2[3] + cam2_rotation[0] * cam2_rotation[3]
-                # sum_cam2[4] = sum_cam2[4] + cam2_rotation[1] * cam2_rotation[3]
-                # sum_cam2[5] = sum_cam2[5] + cam2_rotation[2] * cam2_rotation[3]
-
-                #self.image_count = self.image_count + 1
-
             rospy.loginfo("Finishing Sampling")
-
-            # avg_x1 = sum_cam1[0] / 100.0
-            # avg_y1 = sum_cam1[1] / 100.0
-            # avg_z1 = sum_cam1[2] / 100.0
-            #
-            # avg_qx1 = sum_cam1[3] / 100.0
-            # avg_qy1 = sum_cam1[4] / 100.0
-            # avg_qz1 = sum_cam1[5] / 100.0
-            #
-            # avg_x2 = sum_cam2[0] / 100.0
-            # avg_y2 = sum_cam2[1] / 100.0
-            # avg_z2 = sum_cam2[2] / 100.0
-            #
-            # avg_qx2 = sum_cam2[3] / 100.0
-            # avg_qy2 = sum_cam2[4] / 100.0
-            # avg_qz2 = sum_cam2[5] / 100.0
-            #
-            # w1 = pow((pow(avg_qx1, 2) + pow(avg_qy1, 2) + pow(avg_qz1, 2)), 0.5)
-            # w2 = pow((pow(avg_qx2, 2) + pow(avg_qy2, 2) + pow(avg_qz2, 2)), 0.5)
-            #
-            # avg_qx1 = avg_qx1 / w1
-            # avg_qy1 = avg_qy1 / w1
-            # avg_qz1 = avg_qz1 / w1
-            #
-            # avg_qx2 = avg_qx2 / w2
-            # avg_qy2 = avg_qy2 / w2
-            # avg_qz2 = avg_qz2 / w2
-            #
-            # d1 = pow((pow(avg_qx1, 2) + pow(avg_qy1, 2) + pow(avg_qz1, 2) + pow(w1, 2)), 0.5)
-            # d2 = pow((pow(avg_qx2, 2) + pow(avg_qy2, 2) + pow(avg_qz2, 2) + pow(w2, 2)), 0.5)
-
 
             self.t1[0] = cam1_translation[0]
             self.t1[1] = cam1_translation[1]
@@ -447,56 +306,18 @@ class Pipeline:
             while True:
 
                 # Wait for a coherent pair of frames: depth and color
-                # lines 98 and 100 are used to test frame rate
-                # self.tim = self.current_milli_time()
                 frames2 = self.rspipeline2.wait_for_frames()
-                #rospy.loginfo("Frame 2 acquired")
                 frames1 = self.rspipeline1.wait_for_frames()
-                #rospy.loginfo("Frame 1 acquired")
 
-
-                # rospy.loginfo("Cam Time: " + str(self.current_milli_time() - self.tim))
-                # depth_frame1 = frames1.get_depth_frame()
                 color_frame1 = frames1.get_color_frame()
-                # depth_frame2 = frames2.get_depth_frame()
                 color_frame2 = frames2.get_color_frame()
-                # if not depth_frame1 or not color_frame1:
-                #     continue
 
-                # Convert images to numpy arrays
-                # depth_image1 = np.asanyarray(depth_frame1.get_data())
                 color_image1 = np.asanyarray(color_frame1.get_data())
-
-                # depth_image2 = np.asanyarray(depth_frame2.get_data())
                 color_image2 = np.asanyarray(color_frame2.get_data())
-
-                # Apply colormap on depth image (image must be converted to 8-bit per pixel first)
-                # depth_colormap1 = cv2.applyColorMap(cv2.convertScaleAbs(depth_image1, alpha=0.03), cv2.COLORMAP_JET)
-                # depth_colormap_dim1 = depth_colormap1.shape
-                # color_colormap_dim1 = color_image1.shape
-                #
-                # depth_colormap2 = cv2.applyColorMap(cv2.convertScaleAbs(depth_image2, alpha=0.03), cv2.COLORMAP_JET)
-                # depth_colormap_dim2 = depth_colormap2.shape
-                # color_colormap_dim2 = color_image2.shape
-                #
-                # # If depth and color resolutions are different, resize color image to match depth image for display
-                # if depth_colormap_dim1 != color_colormap_dim1:
-                #     resized_color_image1 = cv2.resize(color_image1, dsize=(depth_colormap_dim1[1], depth_colormap_dim1[0]),
-                #                                      interpolation=cv2.INTER_AREA)
-                #     images1 = np.hstack((resized_color_image1, depth_colormap1))
-                # else:
-                #     images1 = np.hstack((color_image1, depth_colormap1))
-                #
-                # if depth_colormap_dim2 != color_colormap_dim2:
-                #     resized_color_image2 = cv2.resize(color_image2, dsize=(depth_colormap_dim2[1], depth_colormap_dim2[0]),
-                #                                      interpolation=cv2.INTER_AREA)
-                #     images2 = np.hstack((resized_color_image2, depth_colormap2))
-                # else:
-                #     images2 = np.hstack((color_image2, depth_colormap2))
 
                 # Show images
                 self.broadcaster(color_image1, color_image2)
-                self.pipeline(color_image1, color_image2)
+                self.publish(color_image1, color_image2)
                 #self.record_images(color_image)
                 # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
                 #cv2.imshow('RealSense', images1)
@@ -527,18 +348,8 @@ class Pipeline:
         self.count += 1
         rospy.sleep(2)
 
-        # for q in self.rolling_values:
-        #     x = q[0]
-        #     y = q[1]
-        #     z = q[2]
-        #     w = q[3]
-        #
-        #     sum_x = sum_x + w*x
-        #     sum_y = sum_y + w*y
-        #     sum_z = sum_z + w*z
-    # image as image message
-    def pipeline(self, image1, image2):
-        tags = self.processor.processor(image1, False)
+    def publish(self, image1, image2):
+        tags = self.processor.pipeline(image1, False)
 
         for object_name in self.object_name_list:
             if object_name in tags.keys():
@@ -551,7 +362,7 @@ class Pipeline:
                 transform.rotation = Quaternion(quaternion[0], quaternion[1], quaternion[2], quaternion[3])
                 self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), object_name + "_green", "camera_green")
 
-        tags = self.processor.processor(image2, False)
+        tags = self.processor.pipeline(image2, False)
         for object_name in self.object_name_list:
             if object_name in tags.keys():
                 transform = Transform()
@@ -562,8 +373,6 @@ class Pipeline:
                 transform.rotation = Quaternion(quaternion[0], quaternion[1], quaternion[2], quaternion[3])
 
                 self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), object_name + "_purple", "camera_purple")
-
-
 
         # gray_image1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
         # gray_image2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
@@ -594,100 +403,6 @@ class Pipeline:
         # fy = 1364.4257
         # cx = 951.6751
         # cy = 511.0647
-        #
-        # intrinsics_mat = np.array([[fx, 0, cx],
-        #                            [0, fy, cy],
-        #                            [0, 0, 1]])  # elements from the K matrix
-        #
-        # TAG_SIZE = 0.025 #0.062 # Tag size from Step 1 in meters
-        # obj_pts = np.array(object_points(TAG_SIZE))
-        # detector = apriltag(family="tag36h11")
-        # detections1 = detector.detect(gray_image1)
-        # detections2 = detector.detect(gray_image2)
-        #
-        # for ID in self.tagIDs:
-        #     for tag in detections1:
-        #         if tag['id'] == ID:
-        #             center = tag['center']
-        #             lb_rb_rt_lt = tag['lb-rb-rt-lt']
-        #             lt_rt_rb_lb = np.zeros((4, 2))
-        #             for i in range(4):
-        #                 lt_rt_rb_lb[i] = lb_rb_rt_lt[3 - i]
-        #             # , estimate_tag_pose=True, camera_params=PARAMS, tag_size=TAG_SIZE)
-        #             # rospy.loginfo("Detector Time " + str(time2 - time1))
-        #             # rospy.loginfo(lt_rt_rb_lb)
-        #
-        #             # time1 = self.current_milli_time()
-        #             good, prvecs, ptvecs = cv2.solvePnP(obj_pts, lt_rt_rb_lb, intrinsics_mat, (),
-        #                                                 flags=cv2.SOLVEPNP_IPPE_SQUARE)
-        #             # time2 = self.current_milli_time()
-        #             # rospy.loginfo("Solver Time " + str(time2 - time1))
-        #
-        #             if good:
-        #                 # Make 2 Pose w/ vectors
-        #
-        #                 # handle rotation
-        #                 transform = Transform()
-        #                 transform.translation = Vector3(ptvecs[0][0], ptvecs[1][0], ptvecs[2][0])
-        #
-        #                 rot_matrix, _ = cv2.Rodrigues(prvecs)
-        #
-        #                 new_mat = np.zeros((4, 4), np.float32)
-        #                 for i in range(3):
-        #                     for j in range(3):
-        #                         new_mat[i][j] = rot_matrix[i][j]
-        #                 new_mat[3, 3] = 1
-        #                 # rospy.loginfo(rot_matrix)
-        #                 # handle pos
-        #                 rot_matrix, _ = cv2.Rodrigues(prvecs)
-        #
-        #                 orientation = quaternion_from_matrix(new_mat)
-        #                 orientation = self.boxVal.filter_readings(orientation)
-        #
-        #
-        #
-        #                 transform.rotation = Quaternion(orientation[0], orientation[1], orientation[2], orientation[3])
-        #                 if ID == 0:
-        #                     object_name = "calibration_box"
-        #                 elif ID == 1:
-        #                     object_name = "corn_can"
-        #                 self.br.sendTransform(
-        #                     (transform.translation.x, transform.translation.y, transform.translation.z), (
-        #                         transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
-        #                     rospy.Time.now(), object_name, "camera_green")
-        #     for tag in detections2:
-        #         if tag['id'] == ID:
-        #             center = tag['center']
-        #             lb_rb_rt_lt = tag['lb-rb-rt-lt']
-        #             lt_rt_rb_lb = np.zeros((4, 2))
-        #             for i in range(4):
-        #                 lt_rt_rb_lb[i] = lb_rb_rt_lt[3 - i]
-        #             # , estimate_tag_pose=True, camera_params=PARAMS, tag_size=TAG_SIZE)
-        #
-        #             # time1 = self.current_milli_time()
-        #             good, prvecs, ptvecs = cv2.solvePnP(obj_pts, lt_rt_rb_lb, intrinsics_mat, (),
-        #                                                 flags=cv2.SOLVEPNP_IPPE_SQUARE)
-        #             if good:
-        #                 transform = Transform()
-        #                 transform.translation = Vector3(ptvecs[0][0], ptvecs[1][0], ptvecs[2][0])
-        #                 rot_matrix, _ = cv2.Rodrigues(prvecs)
-        #                 new_mat = np.zeros((4, 4), np.float32)
-        #                 for i in range(3):
-        #                     for j in range(3):
-        #                         new_mat[i][j] = rot_matrix[i][j]
-        #                 new_mat[3, 3] = 1
-        #                 orientation2 = quaternion_from_matrix(new_mat)
-        #                 orientation2 = self.boxVal.filter_readings(orientation2)
-        #
-        #                 transform.rotation = Quaternion(orientation2[0], orientation2[1], orientation2[2], orientation2[3])
-        #                 if ID == 0:
-        #                     object_name = "calibration_box"
-        #                 elif ID == 1:
-        #                     object_name = "corn_can"
-        #                 self.br.sendTransform(
-        #                     (transform.translation.x, transform.translation.y, transform.translation.z), (
-        #                         transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
-        #                     rospy.Time.now(), object_name, "camera_purple")
     def current_milli_time(self):
         return round(time.time() * 1000)
 
