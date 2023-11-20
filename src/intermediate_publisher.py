@@ -71,6 +71,45 @@ def average_positions(t1, r1, t2, r2):
     #     rotation[i] = q[i]
     return transformation, rotation
 
+def broadcast_object(object_name):
+    green_correct = False
+    trans1, rot1, trans2, rot2 = None, None, None, None
+    try:
+        (trans1, rot1) = listener.lookupTransform('/world', '/' + object_name + '_green', rospy.Time(0))
+        green_correct = True
+    except:
+        # rospy.logwarn("No Corn Can Transform")
+        pass
+
+    purple_correct = False
+    try:
+        (trans2, rot2) = listener.lookupTransform('/world', '/' + object_name + '_purple', rospy.Time(0))
+        purple_correct = True
+    except:
+        pass
+
+    trans, rot = None, None
+
+
+    if green_correct and purple_correct:
+        trans, rot = average_positions(trans1, rot1, trans2, rot2)
+    elif green_correct:
+        trans, rot = trans1, rot1
+    elif purple_correct:
+        trans, rot = trans2, rot2
+    else:
+        return
+
+    transform = Transform()
+
+    transform.translation = Vector3(trans[0], trans[1], trans[2])
+    transform.rotation = Quaternion(rot[0], rot[1], rot[2], rot[3])
+
+    broadcaster.sendTransform(
+        (transform.translation.x, transform.translation.y, transform.translation.z), (
+            transform.rotation.x, transform.rotation.y, transform.rotation.z,
+            transform.rotation.w), rospy.Time.now(), object_name, "/world")
+
 
 if __name__ == '__main__':
     rospy.sleep(2)
@@ -80,90 +119,11 @@ if __name__ == '__main__':
     rospy.sleep(5)
     rate = rospy.Rate(60)
     while not rospy.is_shutdown():
-        tag_msg = TFMessage()
 
-        # Header
-        generic_header = Header()
-        generic_header.stamp = rospy.Time.now()
-        generic_header.frame_id = "world"
+        broadcast_object('corn_can')
+        broadcast_object('grey_cube')
+        broadcast_object('bottle_2')
 
-        # (adjust_trans, adjust_rot) = listener.lookupTransform('/world', '/adjust', rospy.Time(0))
-
-        # try:
-        #     (camera_trans, camera_rot) = listener.lookupTransform('/world', '/camera', rospy.Time(0))
-        #     transform.translation = Vector3(camera_trans[0], camera_trans[1], camera_trans[2])
-        #     transform.rotation = Quaternion(camera_rot[0], camera_rot[1], camera_rot[2], camera_rot[3])
-        #     tag_msg.transform = transform
-        #     camera_pub.publish(tag_msg)
-        # except:
-        #     #rospy.logwarn("No Camera Transform")
-        #     pass
-
-        try:
-            (trans1, rot1) = listener.lookupTransform('/world', '/corn_can_green', rospy.Time(0))
-            (trans2, rot2) = listener.lookupTransform('/world', '/corn_can_purple', rospy.Time(0))
-
-            corn_trans, corn_rotation = average_positions(trans1, rot1, trans2, rot2)
-
-            corn_transform = Transform()
-
-            corn_transform.translation = Vector3(corn_trans[0], corn_trans[1], corn_trans[2])
-            corn_transform.rotation = Quaternion(corn_rotation[0], corn_rotation[1], corn_rotation[2], corn_rotation[3])
-
-            broadcaster.sendTransform(
-                (corn_transform.translation.x, corn_transform.translation.y, corn_transform.translation.z), (
-                corn_transform.rotation.x, corn_transform.rotation.y, corn_transform.rotation.z,
-                corn_transform.rotation.w), rospy.Time.now(), "/corn_can", "/world")
-        except:
-            # rospy.logwarn("No Corn Can Transform")
-            pass
-
-        try:
-            (trans1, rot1) = listener.lookupTransform('/world', '/grey_cube_green', rospy.Time(0))
-            (trans2, rot2) = listener.lookupTransform('/world', '/grey_cube_purple', rospy.Time(0))
-            # rospy.loginfo(
-            #     "Cam 1 rotation: X: " + str(rot1[0]) + " Y: " + str(rot1[1]) + " Z: " + str(
-            #         rot1[2]) + " w: " + str(rot1[3]))
-            #
-            # rospy.loginfo(
-            #     "Cam 2 rotation: X: " + str(rot2[0]) + " Y: " + str(rot2[1]) + " Z: " + str(
-            #         rot2[2]) + " w: " + str(rot2[3]))
-
-            # rospy.loginfo('KMS1')
-            grey_trans, grey_rotation = average_positions(trans1, rot1, trans2, rot2)
-            # rospy.loginfo('KMS2')
-            grey_transform = Transform()
-
-            grey_transform.translation = Vector3(grey_trans[0], grey_trans[1], grey_trans[2])
-            grey_transform.rotation = Quaternion(grey_rotation[0], grey_rotation[1], grey_rotation[2], grey_rotation[3])
-
-            broadcaster.sendTransform(
-                (grey_transform.translation.x, grey_transform.translation.y, grey_transform.translation.z), (
-                    grey_transform.rotation.x, grey_transform.rotation.y, grey_transform.rotation.z,
-                    grey_transform.rotation.w), rospy.Time.now(), "grey_cube", "world")
-            # rospy.loginfo('KMS3')
-
-        except Exception as e:
-            pass
-
-        try:
-            (trans1, rot1) = listener.lookupTransform('/world', '/bottle_2_green', rospy.Time(0))
-            (trans2, rot2) = listener.lookupTransform('/world', '/bottle_2_purple', rospy.Time(0))
-
-            bottle_trans, bottle_rot = average_positions(trans1, rot1, trans2, rot2)
-
-            bottle_transform = Transform()
-
-            bottle_transform.translation = Vector3(bottle_trans[0], bottle_trans[1], bottle_trans[2])
-            bottle_transform.rotation = Quaternion(bottle_rot[0], bottle_rot[1], bottle_rot[2], bottle_rot[3])
-
-            broadcaster.sendTransform(
-                (bottle_transform.translation.x, bottle_transform.translation.y, bottle_transform.translation.z), (
-                    bottle_transform.rotation.x, bottle_transform.rotation.y, bottle_transform.rotation.z,
-                    bottle_transform.rotation.w), rospy.Time.now(), "/bottle_2", "/world")
-        except:
-            # rospy.logwarn("No Bottle 2")
-            pass
 
         rate.sleep()
 
