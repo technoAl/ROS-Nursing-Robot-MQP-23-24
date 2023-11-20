@@ -558,7 +558,9 @@ class Pipeline:
 
                 transform.translation = Vector3(translation[0], translation[1], translation[2])
                 transform.rotation = Quaternion(quaternion[0], quaternion[1], quaternion[2], quaternion[3])
+
                 self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), object_name + "_purple", "camera_purple")
+
 
 
         # gray_image1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)

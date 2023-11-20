@@ -35,6 +35,7 @@ if __name__ == '__main__':
     x = 0
     y = 0
     z = 0
+    table_z = 0
     while not rospy.is_shutdown():
         key = getKey(settings, 0.01)
         if key == 'w':
@@ -49,10 +50,18 @@ if __name__ == '__main__':
             z += 0.001
         elif key == 'e':
             z -= 0.001
+        elif key == 'r':
+            table_z += 0.001
+        elif key == 'f':
+            table_z -= 0.001
         elif key == ' ':
             rospy.signal_shutdown("Interrupt")
 
         br.sendTransform(
             (x, y, z), tf.transformations.quaternion_from_euler(0, 0, 0),
             rospy.Time.now(), "adjust", "world")
+        br.sendTransform(
+            (0, 0, table_z), tf.transformations.quaternion_from_euler(0, 0, 0),
+            rospy.Time.now(), "adjust_table", "adjust")
+
 
