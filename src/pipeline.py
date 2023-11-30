@@ -192,8 +192,8 @@ class Pipeline:
         self.rsconfig2.enable_device(self.cam2serial)
         self.rsconfig2.enable_stream(rs.stream.color, 1920, 1080, rs.format.bgr8, 30)
 
-        self.profile1 = self.rsconfig1.resolve(self.rspipeline1)
         self.profile2 = self.rsconfig2.resolve(self.rspipeline2)
+        self.profile1 = self.rsconfig1.resolve(self.rspipeline1)
 
         ### Making robot go 10Hz
         self.rate = rospy.Rate(30)
@@ -306,8 +306,9 @@ class Pipeline:
             while True:
 
                 # Wait for a coherent pair of frames: depth and color
-                frames2 = self.rspipeline2.wait_for_frames()
                 frames1 = self.rspipeline1.wait_for_frames()
+                frames2 = self.rspipeline2.wait_for_frames()
+
 
                 color_frame1 = frames1.get_color_frame()
                 color_frame2 = frames2.get_color_frame()

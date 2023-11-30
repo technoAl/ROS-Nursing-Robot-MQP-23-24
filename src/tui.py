@@ -17,7 +17,7 @@ class TabButtons(Layout):
         for i, _ in enumerate(cols):
             self.add_widget(Divider(), i)
         btns = [Button("Interfaces", self._on_click_1),
-                Button("Btn2", self._on_click_2),
+                Button("Start Trial", self._on_click_2),
                 Button("Btn3", self._on_click_3),
                 Button("Btn4", self._on_click_4),
                 Button("Quit", self._on_click_Q)]
@@ -51,10 +51,12 @@ class RootPage(Frame):
         layout1 = Layout([1, 1], fill_frame=True)
         self.add_layout(layout1)
         # add your widgets here
-        btns = [Button("Grab", self._intGrab),
-                Button("Grab Select", self._intGrabSel),
-                Button("Point Select", self._intPointSel),
-                Button("Gaze", self._intGaze)]
+        btns = [Button("Drag", self._intDrag),
+                Button("Gaze", self._intGaze),
+                Button("Point", self._intPoint),
+                Button("Drag Select", self._intDragSel),
+                Button("Gaze Select", self._intGazeSel),
+                Button("Point Select", self._intPointSel)]
         for i, btn in enumerate(btns):
             layout1.add_widget(btn, 0)
 
@@ -67,19 +69,26 @@ class RootPage(Frame):
         self.add_layout(layout2)
         self.fix()
 
-    def _intGrab(self):
-        os.system("rostopic pub -1 /statemanager/command std_msgs/String \"data: selector_type grab\"> /dev/null&")
+    def _intDrag(self):
+        os.system("rostopic pub -1 /statemanager/command std_msgs/String \"data: selector_type drag\"> /dev/null&")
 
-    def _intGrabSel(self):
+    def _intDragSel(self):
         os.system(
-            "rostopic pub -1 /statemanager/command std_msgs/String \"data: selector_type grab_select\"> /dev/null&")
+            "rostopic pub -1 /statemanager/command std_msgs/String \"data: selector_type drag_select\"> /dev/null&")
 
     def _intPointSel(self):
         os.system(
             "rostopic pub -1 /statemanager/command std_msgs/String \"data: selector_type point_select\"> /dev/null&")
 
+    def _intPoint(self):
+        os.system(
+            "rostopic pub -1 /statemanager/command std_msgs/String \"data: selector_type point\"> /dev/null&")
+
     def _intGaze(self):
         os.system("rostopic pub -1 /statemanager/command std_msgs/String \"data: selector_type gaze\"> /dev/null&")
+
+    def _intGazeSel(self):
+        os.system("rostopic pub -1 /statemanager/command std_msgs/String \"data: selector_type gaze_select\"> /dev/null&")
 
     def _intShowLables(self):
         os.system("rostopic pub -1 /statemanager/command std_msgs/String \"data: show lables\"> /dev/null&")
@@ -94,14 +103,23 @@ class AlphaPage(Frame):
                          screen.height,
                          screen.width,
                          can_scroll=False,
-                         title="Alpha Page")
+                         title="Trials")
         layout1 = Layout([1], fill_frame=True)
         self.add_layout(layout1)
         # add your widgets here
+        btns = [Button("Start Trial", self._starttrial)]
+        for i, btn in enumerate(btns):
+            layout1.add_widget(btn, i)
 
         layout2 = TabButtons(self, 1)
         self.add_layout(layout2)
         self.fix()
+
+    def start(self):
+        raise NextScene("RunTab")
+
+    def _starttrial(self):
+        os.system("rostopic pub -1 /statemanager/command std_msgs/String \"data: trial start\"> /dev/null&")
 
 
 class BravoPage(Frame):
@@ -136,12 +154,29 @@ class CharliePage(Frame):
         self.fix()
 
 
+class TrialRun(Frame):
+
+    def __init__(self, screen):
+        super().__init__(screen,
+                         screen.height,
+                         screen.width,
+                         can_scroll=False,
+                         title="Trial Run")
+        layout1 = Layout([1], fill_frame=True)
+        self.add_layout(layout1)
+
+        layout2 = TabButtons(self, 3)
+        self.add_layout(layout2)
+        self.fix()
+
+
 def demo(screen, scene):
     scenes = [
         Scene([RootPage(screen)], -1, name="Interfaces"),
         Scene([AlphaPage(screen)], -1, name="Tab2"),
         Scene([BravoPage(screen)], -1, name="Tab3"),
         Scene([CharliePage(screen)], -1, name="Tab4"),
+        Scene([TrialRun(screen)], -1, name="RunTab"),
     ]
     screen.play(scenes, stop_on_resize=True, start_scene=scene, allow_int=True)
 
