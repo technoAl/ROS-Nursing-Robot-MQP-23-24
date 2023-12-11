@@ -36,6 +36,9 @@ if __name__ == '__main__':
     y = 0
     z = 0
     table_z = 0
+    rx = 0
+    ry = 0
+    rz = 0
     while not rospy.is_shutdown():
         key = getKey(settings, 0.01)
         if key == 'w':
@@ -50,6 +53,18 @@ if __name__ == '__main__':
             z += 0.001
         elif key == 'e':
             z -= 0.001
+        elif key == 'i':
+            rx += 0.001
+        elif key == 'k':
+            rx -= 0.001
+        elif key == 'j':
+            ry += 0.001
+        elif key == 'l':
+            ry -= 0.001
+        elif key == 'u':
+            rz += 0.001
+        elif key == 'o':
+            rz -= 0.001
         elif key == 'r':
             table_z += 0.001
         elif key == 'f':
@@ -63,5 +78,8 @@ if __name__ == '__main__':
         br.sendTransform(
             (x, y, z), tf.transformations.quaternion_from_euler(0, 0, 0),
             rospy.Time.now(), "adjust_objects", "calibration_tag")
+        br.sendTransform(
+            (rx, ry, rz), tf.transformations.quaternion_from_euler(0, 0, 0),
+            rospy.Time.now(), "base_link", "robot_adjust")
 
 

@@ -261,8 +261,6 @@ class Pipeline:
             self.t1[1] = cam1_translation[1]
             self.t1[2] = cam1_translation[2]
 
-            # quat_1 = (avg_qx1, avg_qy1, avg_qz1, w1)/d1
-
             self.q1[0] = cam1_rotation[0]
             self.q1[1] = cam1_rotation[1]
             self.q1[2] = cam1_rotation[2]
@@ -271,8 +269,6 @@ class Pipeline:
             self.t2[0] = cam2_translation[0]
             self.t2[1] = cam2_translation[1]
             self.t2[2] = cam2_translation[2]
-
-            # quat_2 = (avg_qx2, avg_qy2, avg_qz2, w2)/d2
 
             self.q2[0] = cam2_rotation[0]
             self.q2[1] = cam2_rotation[1]

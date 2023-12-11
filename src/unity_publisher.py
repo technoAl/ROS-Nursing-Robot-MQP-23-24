@@ -102,6 +102,45 @@ if __name__ == '__main__':
         except:
             # rospy.logwarn("No Corn Can Transform")
             pass
+
+        try:
+            arm_transform0 = broadcast_object('/arm_origin', 'arm_origin', generic_header)
+            tag_msg.transforms.append(arm_transform0)
+        except:
+            # rospy.logwarn("No Corn Can Transform")
+            pass
+        try:
+            arm_transform1 = broadcast_object('/shoulder_link', 'arm_1', generic_header)
+            tag_msg.transforms.append(arm_transform1)
+        except:
+            # rospy.logwarn("No Corn Can Transform")
+            pass
+        try:
+            arm_transform2 = broadcast_object('/elbow_link', 'arm_2', generic_header)
+            tag_msg.transforms.append(arm_transform2)
+        except:
+            # rospy.logwarn("No Corn Can Transform")
+            pass
+        try:
+            arm_transform3 = broadcast_object('/forearm_link', 'arm_3', generic_header)
+            tag_msg.transforms.append(arm_transform3)
+        except:
+            # rospy.logwarn("No Corn Can Transform")
+            pass
+        try:
+            arm_transform4 = broadcast_object('/wrist_link', 'arm_4', generic_header)
+            tag_msg.transforms.append(arm_transform4)
+        except:
+            # rospy.logwarn("No Corn Can Transform")
+            pass
+        try:
+            arm_gripper = broadcast_object('/gripper_link', 'arm_gripper', generic_header)
+            tag_msg.transforms.append(arm_gripper)
+        except:
+            # rospy.logwarn("No Corn Can Transform")
+            pass
+
+        #append all arm transforms
         
         tf_pub.publish(tag_msg)
 
