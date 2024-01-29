@@ -10,7 +10,6 @@ from apriltag import apriltag
 from PIL import Image as im
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped, Point, Pose, Quaternion, TransformStamped, Vector3, Transform
-import pyrealsense2 as rs
 import time
 from tf.transformations import quaternion_from_euler, quaternion_from_matrix
 import tf
@@ -93,8 +92,8 @@ class Image_Processing:
                     # #new_image = cv2.line(new_image, p3, p4, (0, 255, 0), 2)
                     # #new_image = cv2.line(new_image, p4, p1, (0, 255, 0), 2)
                     #
-                    # cv2.imshow("max range", image)
-                    # cv2.waitKey(0)
+                    cv2.imshow("max range", image)
+                    cv2.waitKey(0)
                     # time1 = self.current_milli_time()
                     ID = tag['id']
                     object_name = ""
@@ -145,8 +144,6 @@ class Pipeline:
         ### Initialize node, name it 'lab2'
         rospy.init_node('pipeline')
 
-        self.cam1serial = '936322072225'
-        self.cam2serial = '825412070317'
         self.br = tf.TransformBroadcaster()
 
         self.pipeline_rate = 0
@@ -154,46 +151,6 @@ class Pipeline:
         self.current_image = 0
         self.intrinsics = 0
         self.plot_publisher = rospy.Publisher('/plot/value', Float32, queue_size=10)
-        # camera setup through pyrealsense2
-        self.rspipeline1 = rs.pipeline()
-        self.rspipeline2 = rs.pipeline()
-
-        self.rsconfig1 = rs.config()
-        self.rsconfig2 = rs.config()
-
-        self.rspipe_wrapper1 = rs.pipeline_wrapper(self.rspipeline1)
-        self.pipeline_profile1 = self.rsconfig1.resolve(self.rspipe_wrapper1)
-        self.device1 = self.pipeline_profile1.get_device()
-        self.device_product_line1 = str(self.device1.get_info(rs.camera_info.product_line))
-
-        self.rspipe_wrapper2 = rs.pipeline_wrapper(self.rspipeline2)
-        self.pipeline_profile2 = self.rsconfig2.resolve(self.rspipe_wrapper2)
-        self.device2 = self.pipeline_profile2.get_device()
-        self.device_product_line2 = str(self.device2.get_info(rs.camera_info.product_line))
-
-        found_rgb = False
-        for s in self.device1.sensors:
-            if s.get_info(rs.camera_info.name) == 'RGB Camera':
-                found_rgb = True
-                break
-        if not found_rgb:
-            rospy.loginfo("The demo requires Depth camera with Color sensor")
-            exit(0)
-        for s in self.device2.sensors:
-            if s.get_info(rs.camera_info.name) == 'RGB Camera':
-                found_rgb = True
-                break
-        if not found_rgb:
-            rospy.loginfo("The demo requires Depth camera with Color sensor")
-            exit(0)
-        self.rsconfig1.enable_device(self.cam1serial)
-        self.rsconfig1.enable_stream(rs.stream.color, 1920, 1080, rs.format.bgr8, 30)
-
-        self.rsconfig2.enable_device(self.cam2serial)
-        self.rsconfig2.enable_stream(rs.stream.color, 1920, 1080, rs.format.bgr8, 30)
-
-        self.profile2 = self.rsconfig2.resolve(self.rspipeline2)
-        self.profile1 = self.rsconfig1.resolve(self.rspipeline1)
 
         ### Making robot go 10Hz
         self.rate = rospy.Rate(30)
@@ -241,13 +198,22 @@ class Pipeline:
     def callback(self,data):
         self.ready = data.data
 
-    def broadcaster(self, image1, image2):
+    def broadcaster(self):
 
-        while self.sample_done == False:
+        while not self.sample_done:
 
             rospy.loginfo("Initiating Sampling")
             while self.image_count < 10:
                 self.image_count = self.image_count + 1
+            camera1 = cv2.VideoCapture(0)
+            camera2 = cv2.VideoCapture(8)
+
+            ret, image1 = camera1.read()
+            ret, image2 = camera2.read()
+
+            cv2.imshow("max range", image1)
+            cv2.waitKey(0)
+
             found_tag = self.processor.pipeline(image1, True)
             cam1_translation = found_tag['tag'][0]
             cam1_rotation = found_tag['tag'][1]
@@ -300,28 +266,15 @@ class Pipeline:
 
         try:
             while True:
-
-                # Wait for a coherent pair of frames: depth and color
-                frames1 = self.rspipeline1.wait_for_frames()
-                frames2 = self.rspipeline2.wait_for_frames()
-
-
-                color_frame1 = frames1.get_color_frame()
-                color_frame2 = frames2.get_color_frame()
-
-                color_image1 = np.asanyarray(color_frame1.get_data())
-                color_image2 = np.asanyarray(color_frame2.get_data())
-
                 # Show images
-                self.broadcaster(color_image1, color_image2)
+                self.broadcaster()
                 self.publish(color_image1, color_image2)
                 #self.record_images(color_image)
                 # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
                 #cv2.imshow('RealSense', images1)
                 # cv2.waitKey(1)
         finally:
-            self.rspipeline1.stop()
-            self.rspipeline2.stop()
+            pass
 
     def record_images(self, image):
         # height = image.height
@@ -406,11 +359,6 @@ class Pipeline:
     def run(self):
         r = rospy.Rate(60)
         # # Start streaming
-        rospy.loginfo("Starting cam 1")
-        self.rspipeline1.start(self.rsconfig1)
-        time.sleep(1)
-        rospy.loginfo("Starting cam 2")
-        self.rspipeline2.start(self.rsconfig2)
 
         while not rospy.is_shutdown():
             self.update_current_image()
