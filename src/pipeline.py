@@ -15,6 +15,7 @@ from tf.transformations import quaternion_from_euler, quaternion_from_matrix
 import tf
 from pyquaternion import Quaternion as pyQuaternion
 from std_msgs.msg import Float32
+import cv2
 import statistics
 
 
@@ -43,8 +44,7 @@ class Image_Processing:
         self.cam2_rot = np.zeros((4, 4))
 
 
-    def pipeline(self, image, in_init):
-
+    def pipeline(self, image, in_init, imageName):
 
         intrinsics_mat = self.cam1_intrinsics
         '''if camera == 'cam1':
@@ -65,73 +65,79 @@ class Image_Processing:
 
         found_objects = {}
 
-        if len(detections) > 0:
-            for tag in detections:
-                # rospy.loginfo("DETECTED")
-                center = tag['center']
-                lb_rb_rt_lt = tag['lb-rb-rt-lt']
-                lt_rt_rb_lb = np.zeros((4, 2))
-                for i in range(4):
-                    lt_rt_rb_lb[i] = lb_rb_rt_lt[3 - i]
+        # rospy.loginfo("showing")
 
-                good, prvecs, ptvecs = cv2.solvePnP(obj_pts, lt_rt_rb_lb, intrinsics_mat, (),
-                                                    flags=cv2.SOLVEPNP_IPPE_SQUARE)
+        cv2.imshow(imageName, image)
+        cv2.waitKey(1)
 
-                if good:
+        # rospy.loginfo("finished")
 
-                    # pt = lt_rt_rb_lb[0]
-                    # print(tuple(pt))
+        # if len(detections) > 0:
+        #     rospy.loginfo(imageName + "DETECTED IMAGE");
+        #     for tag in detections:
+        #         center = tag['center']
+        #         lb_rb_rt_lt = tag['lb-rb-rt-lt']
+        #         lt_rt_rb_lb = np.zeros((4, 2))
+        #         for i in range(4):
+        #             lt_rt_rb_lb[i] = lb_rb_rt_lt[3 - i]
 
-                    # p1 = (int(lt_rt_rb_lb[0][0]), int(lt_rt_rb_lb[0][1]))
-                    # p2 = (int(lt_rt_rb_lb[1][0]), int(lt_rt_rb_lb[1][1]))
-                    # p3 = (int(lt_rt_rb_lb[2][0]), int(lt_rt_rb_lb[2][1]))
-                    # p4 = (int(lt_rt_rb_lb[3][0]), int(lt_rt_rb_lb[3][1]))
-                    #
-                    # image = cv2.line(image, p1, p2, (0, 255, 0), 2)
-                    # image = cv2.line(image, p2, p3, (0, 255, 0), 2)
-                    # #new_image = cv2.line(new_image, p3, p4, (0, 255, 0), 2)
-                    # #new_image = cv2.line(new_image, p4, p1, (0, 255, 0), 2)
-                    #
-                    cv2.imshow("max range", image)
-                    cv2.waitKey(0)
-                    # time1 = self.current_milli_time()
-                    ID = tag['id']
-                    object_name = ""
-                    if in_init and ID == 47:
-                        object_name = "tag"
-                    elif not in_init:
-                        if ID == 0:
-                            object_name = "grey_cube"
-                        if ID == 1:
-                            object_name = "corn_can"
-                        if ID == 2:
-                            object_name = "bottle_2"
-                    else:
-                        continue
+        #         good, prvecs, ptvecs = cv2.solvePnP(obj_pts, lt_rt_rb_lb, intrinsics_mat, (),
+        #                                             flags=cv2.SOLVEPNP_IPPE_SQUARE)
 
-                    rot_matrix, _ = cv2.Rodrigues(prvecs)
+        #         if good:
 
-                    mat = np.zeros((4, 4), np.float32)
-                    for i in range(3):
-                        for j in range(3):
-                            mat[i][j] = rot_matrix[i][j]
+        #             # pt = lt_rt_rb_lb[0]
+        #             # print(tuple(pt))
 
-                    mat[3, 3] = 1
+        #             # p1 = (int(lt_rt_rb_lb[0][0]), int(lt_rt_rb_lb[0][1]))
+        #             # p2 = (int(lt_rt_rb_lb[1][0]), int(lt_rt_rb_lb[1][1]))
+        #             # p3 = (int(lt_rt_rb_lb[2][0]), int(lt_rt_rb_lb[2][1]))
+        #             # p4 = (int(lt_rt_rb_lb[3][0]), int(lt_rt_rb_lb[3][1]))
+        #             #
+        #             # image = cv2.line(image, p1, p2, (0, 255, 0), 2)
+        #             # image = cv2.line(image, p2, p3, (0, 255, 0), 2)
+        #             # #new_image = cv2.line(new_image, p3, p4, (0, 255, 0), 2)
+        #             # #new_image = cv2.line(new_image, p4, p1, (0, 255, 0), 2)
+        #             #
+        #             # cv2.imshow(imageName, image)
+        #             # cv2.waitKey(0)
+        #             # time1 = self.current_milli_time()
+        #             ID = tag['id']
+        #             object_name = ""
+        #             if in_init and ID == 47:
+        #                 object_name = "tag"
+        #             elif not in_init:
+        #                 if ID == 0:
+        #                     object_name = "grey_cube"
+        #                 if ID == 1:
+        #                     object_name = "corn_can"
+        #                 if ID == 2:
+        #                     object_name = "bottle_2"
+        #             else:
+        #                 continue
 
-                    mat[0, 3] = ptvecs[0][0]
-                    mat[1, 3] = ptvecs[1][0]
-                    mat[2, 3] = ptvecs[2][0]
+        #             rot_matrix, _ = cv2.Rodrigues(prvecs)
+        #             mat = np.zeros((4, 4), np.float32)
+        #             for i in range(3):
+        #                 for j in range(3):
+        #                     mat[i][j] = rot_matrix[i][j]
 
-                    # handle pos
+        #             mat[3, 3] = 1
 
-                    if in_init and ID == 47:
-                        mat = np.linalg.inv(mat)
+        #             mat[0, 3] = ptvecs[0][0]
+        #             mat[1, 3] = ptvecs[1][0]
+        #             mat[2, 3] = ptvecs[2][0]
 
-                    orientation = quaternion_from_matrix(mat)
+        #             # handle pos
 
-                    translation = [mat[0, 3], mat[1, 3], mat[2, 3]]
+        #             if in_init and ID == 47:
+        #                 mat = np.linalg.inv(mat)
 
-                    found_objects[object_name] = (translation, orientation)
+        #             orientation = quaternion_from_matrix(mat)
+
+        #             translation = [mat[0, 3], mat[1, 3], mat[2, 3]]
+
+        #             found_objects[object_name] = (translation, orientation)
 
         return found_objects
 
@@ -205,22 +211,24 @@ class Pipeline:
             rospy.loginfo("Initiating Sampling")
             while self.image_count < 10:
                 self.image_count = self.image_count + 1
-            camera1 = cv2.VideoCapture(0)
-            camera2 = cv2.VideoCapture(8)
 
-            ret, image1 = camera1.read()
-            ret, image2 = camera2.read()
-
-            cv2.imshow("max range", image1)
+            # cv2.imshow("Nice Camera", image1)
+            # cv2.imshow("Other Camera", image2)
             cv2.waitKey(0)
 
-            found_tag = self.processor.pipeline(image1, True)
-            cam1_translation = found_tag['tag'][0]
-            cam1_rotation = found_tag['tag'][1]
+            rospy.loginfo("Processing Camera 1")
+            found_tag1 = self.processor.pipeline(image1, True, "4K")
+            
+            rospy.loginfo("Processing Camera 2")
+            found_tag2 = self.processor.pipeline(image2, True, "Onlyfans")
 
-            found_tag = self.processor.pipeline(image2, True)
-            cam2_translation = found_tag['tag'][0]
-            cam2_rotation = found_tag['tag'][1]
+
+            cam1_translation = found_tag1['tag'][0]
+            cam1_rotation = found_tag1['tag'][1]
+
+            cam2_translation = found_tag2['tag'][0]
+            cam2_rotation = found_tag2['tag'][1]
+
             rospy.loginfo("Finishing Sampling")
 
             self.t1[0] = cam1_translation[0]
@@ -262,19 +270,20 @@ class Pipeline:
 
 
 
-    def update_current_image(self):
+    def update_current_image(self, camera1, camera2):
+            # Show images
+            # self.broadcaster()
 
-        try:
-            while True:
-                # Show images
-                self.broadcaster()
-                self.publish(color_image1, color_image2)
-                #self.record_images(color_image)
-                # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
-                #cv2.imshow('RealSense', images1)
-                # cv2.waitKey(1)
-        finally:
-            pass
+            ret1, image1 = camera1.read()
+            ret2, image2 = camera2.read()
+
+
+            # if ret1 and ret2:
+            #     self.publish(image1, image2)
+            #self.record_images(color_image)
+            # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
+            #cv2.imshow('RealSense', images1)
+            # cv2.waitKey(1)
 
     def record_images(self, image):
         # height = image.height
@@ -297,9 +306,14 @@ class Pipeline:
         print(self.count)
         self.count += 1
         rospy.sleep(2)
-
+        cv2.destroyAllWindows()
+    
     def publish(self, image1, image2):
-        tags = self.processor.pipeline(image1, False)
+
+        self.pipeline_rate += 1
+        rospy.loginfo(self.pipeline_rate)
+
+        tags = self.processor.pipeline(image1, False, "4K")
 
         for object_name in self.object_name_list:
             if object_name in tags.keys():
@@ -312,56 +326,42 @@ class Pipeline:
                 transform.rotation = Quaternion(quaternion[0], quaternion[1], quaternion[2], quaternion[3])
                 self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), object_name + "_green", "camera_green")
 
-        tags = self.processor.pipeline(image2, False)
-        for object_name in self.object_name_list:
-            if object_name in tags.keys():
-                transform = Transform()
-                translation = tags[object_name][0]
-                quaternion = tags[object_name][1]
+        # tags = self.processor.pipeline(image2, False, "Other Cam")
+        # for object_name in self.object_name_list:
+        #     if object_name in tags.keys():
+        #         transform = Transform()
+        #         translation = tags[object_name][0]
+        #         quaternion = tags[object_name][1]
 
-                transform.translation = Vector3(translation[0], translation[1], translation[2])
-                transform.rotation = Quaternion(quaternion[0], quaternion[1], quaternion[2], quaternion[3])
+        #         transform.translation = Vector3(translation[0], translation[1], translation[2])
+        #         transform.rotation = Quaternion(quaternion[0], quaternion[1], quaternion[2], quaternion[3])
 
-                self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), object_name + "_purple", "camera_purple")
+        #         self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), object_name + "_purple", "camera_purple")
 
-        # gray_image1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
-        # gray_image2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
-        #
-        # # 1080 by 1920
-        # #   FocalLength: [1380.4628 1379.4309]
-        # #   PrincipalPoint: [956.5579 542.9203]
-        # # fx = 1380.4628
-        # # fy = 1379.4309
-        # # cx = 956.5579
-        # # cy = 542.9203
-        #
-        # # 480 by 640
-        # # fx = 629.0741
-        # # fy = 615.1736
-        # # cx = 325.2477
-        # # cy = 251.2810
-        #
-        # # 1280 by 720
-        # # FocalLength: [908.3491 906.5133]
-        # # PrincipalPoint: [632.3028 343.9200]
-        # # fx = 908.3491
-        # # fy = 906.5133
-        # # cx = 632.3028
-        # # cy = 343.9200
-        # # Camera 1
-        # fx = 1357.7098
-        # fy = 1364.4257
-        # cx = 951.6751
-        # cy = 511.0647
+
     def current_milli_time(self):
         return round(time.time() * 1000)
 
     def run(self):
         r = rospy.Rate(60)
         # # Start streaming
+        camera1 = cv2.VideoCapture(0)
+        camera2 = cv2.VideoCapture(4)
 
+        camera1.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+        camera1.set(cv2.CAP_PROP_FPS, 30)
+
+        camera2.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+        camera2.set(cv2.CAP_PROP_FPS, 30)
+        camera2.set(3, 2500)
+        camera2.set(4, 1900)
         while not rospy.is_shutdown():
-            self.update_current_image()
+            ret, im = camera2.read()
+            if ret:
+                cv2.imshow("d", im)
+                cv2.waitKey(1)
+            #self.update_current_image(camera1, camera2)
+        
         rospy.spin()
 
 if __name__ == '__main__':

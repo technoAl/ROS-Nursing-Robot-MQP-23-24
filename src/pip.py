@@ -2,6 +2,7 @@ import cv2
 from apriltag import apriltag
 
 cap = cv2.VideoCapture(0)
+cap.set(0, cv2.CAP_DSHOW)
 cap.set(3, 3840)
 cap.set(4, 2160)
 cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
