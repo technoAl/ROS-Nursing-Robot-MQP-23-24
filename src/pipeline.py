@@ -65,79 +65,77 @@ class Image_Processing:
 
         found_objects = {}
 
-        # rospy.loginfo("showing")
-
         cv2.imshow(imageName, image)
         cv2.waitKey(1)
 
-        # rospy.loginfo("finished")
+        if len(detections) > 0:
+            rospy.loginfo(imageName + " DETECTED:");
+            for tag in detections:
+                center = tag['center']
+                lb_rb_rt_lt = tag['lb-rb-rt-lt']
+                lt_rt_rb_lb = np.zeros((4, 2))
+                for i in range(4):
+                    lt_rt_rb_lb[i] = lb_rb_rt_lt[3 - i]
 
-        # if len(detections) > 0:
-        #     rospy.loginfo(imageName + "DETECTED IMAGE");
-        #     for tag in detections:
-        #         center = tag['center']
-        #         lb_rb_rt_lt = tag['lb-rb-rt-lt']
-        #         lt_rt_rb_lb = np.zeros((4, 2))
-        #         for i in range(4):
-        #             lt_rt_rb_lb[i] = lb_rb_rt_lt[3 - i]
+                good, prvecs, ptvecs = cv2.solvePnP(obj_pts, lt_rt_rb_lb, intrinsics_mat, (),
+                                                    flags=cv2.SOLVEPNP_IPPE_SQUARE)
 
-        #         good, prvecs, ptvecs = cv2.solvePnP(obj_pts, lt_rt_rb_lb, intrinsics_mat, (),
-        #                                             flags=cv2.SOLVEPNP_IPPE_SQUARE)
+                if good:
 
-        #         if good:
+                    # pt = lt_rt_rb_lb[0]
+                    # print(tuple(pt))
 
-        #             # pt = lt_rt_rb_lb[0]
-        #             # print(tuple(pt))
+                    # p1 = (int(lt_rt_rb_lb[0][0]), int(lt_rt_rb_lb[0][1]))
+                    # p2 = (int(lt_rt_rb_lb[1][0]), int(lt_rt_rb_lb[1][1]))
+                    # p3 = (int(lt_rt_rb_lb[2][0]), int(lt_rt_rb_lb[2][1]))
+                    # p4 = (int(lt_rt_rb_lb[3][0]), int(lt_rt_rb_lb[3][1]))
+                    #
+                    # image = cv2.line(image, p1, p2, (0, 255, 0), 2)
+                    # image = cv2.line(image, p2, p3, (0, 255, 0), 2)
+                    # #new_image = cv2.line(new_image, p3, p4, (0, 255, 0), 2)
+                    # #new_image = cv2.line(new_image, p4, p1, (0, 255, 0), 2)
+        
+                    # time1 = self.current_milli_time()
+                    ID = tag['id']
+                    object_name = ""
+                    if in_init and ID == 33:
+                        object_name = "tag"
+                    elif not in_init:
+                        if ID == 0:
+                            rospy.loginfo("Grey Cube")
+                            object_name = "grey_cube"
+                        elif ID == 1:
+                            rospy.loginfo("Corn Can")
+                            object_name = "corn_can"
+                        elif ID == 2:
+                            rospy.loginfo("Bottle 2")
+                            object_name = "bottle_2"
+                    else:
+                        continue
 
-        #             # p1 = (int(lt_rt_rb_lb[0][0]), int(lt_rt_rb_lb[0][1]))
-        #             # p2 = (int(lt_rt_rb_lb[1][0]), int(lt_rt_rb_lb[1][1]))
-        #             # p3 = (int(lt_rt_rb_lb[2][0]), int(lt_rt_rb_lb[2][1]))
-        #             # p4 = (int(lt_rt_rb_lb[3][0]), int(lt_rt_rb_lb[3][1]))
-        #             #
-        #             # image = cv2.line(image, p1, p2, (0, 255, 0), 2)
-        #             # image = cv2.line(image, p2, p3, (0, 255, 0), 2)
-        #             # #new_image = cv2.line(new_image, p3, p4, (0, 255, 0), 2)
-        #             # #new_image = cv2.line(new_image, p4, p1, (0, 255, 0), 2)
-        #             #
-        #             # cv2.imshow(imageName, image)
-        #             # cv2.waitKey(0)
-        #             # time1 = self.current_milli_time()
-        #             ID = tag['id']
-        #             object_name = ""
-        #             if in_init and ID == 47:
-        #                 object_name = "tag"
-        #             elif not in_init:
-        #                 if ID == 0:
-        #                     object_name = "grey_cube"
-        #                 if ID == 1:
-        #                     object_name = "corn_can"
-        #                 if ID == 2:
-        #                     object_name = "bottle_2"
-        #             else:
-        #                 continue
+                    rot_matrix, _ = cv2.Rodrigues(prvecs)
+                    mat = np.zeros((4, 4), np.float32)
+                    for i in range(3):
+                        for j in range(3):
+                            mat[i][j] = rot_matrix[i][j]
 
-        #             rot_matrix, _ = cv2.Rodrigues(prvecs)
-        #             mat = np.zeros((4, 4), np.float32)
-        #             for i in range(3):
-        #                 for j in range(3):
-        #                     mat[i][j] = rot_matrix[i][j]
+                    mat[3, 3] = 1
 
-        #             mat[3, 3] = 1
+                    mat[0, 3] = ptvecs[0][0]
+                    mat[1, 3] = ptvecs[1][0]
+                    mat[2, 3] = ptvecs[2][0]
 
-        #             mat[0, 3] = ptvecs[0][0]
-        #             mat[1, 3] = ptvecs[1][0]
-        #             mat[2, 3] = ptvecs[2][0]
+                    # handle pos
 
-        #             # handle pos
+                    if in_init and ID == 47:
+                        mat = np.linalg.inv(mat)
 
-        #             if in_init and ID == 47:
-        #                 mat = np.linalg.inv(mat)
+                    orientation = quaternion_from_matrix(mat)
 
-        #             orientation = quaternion_from_matrix(mat)
+                    translation = [mat[0, 3], mat[1, 3], mat[2, 3]]
 
-        #             translation = [mat[0, 3], mat[1, 3], mat[2, 3]]
-
-        #             found_objects[object_name] = (translation, orientation)
+                    found_objects[object_name] = (translation, orientation)
+                    rospy.loginfo("\n")
 
         return found_objects
 
@@ -204,7 +202,7 @@ class Pipeline:
     def callback(self,data):
         self.ready = data.data
 
-    def broadcaster(self):
+    def broadcaster(self, image1, image2):
 
         while not self.sample_done:
 
@@ -212,42 +210,42 @@ class Pipeline:
             while self.image_count < 10:
                 self.image_count = self.image_count + 1
 
-            # cv2.imshow("Nice Camera", image1)
-            # cv2.imshow("Other Camera", image2)
-            cv2.waitKey(0)
 
             rospy.loginfo("Processing Camera 1")
             found_tag1 = self.processor.pipeline(image1, True, "4K")
+            rospy.loginfo(found_tag1)
             
             rospy.loginfo("Processing Camera 2")
-            found_tag2 = self.processor.pipeline(image2, True, "Onlyfans")
-
-
-            cam1_translation = found_tag1['tag'][0]
-            cam1_rotation = found_tag1['tag'][1]
-
-            cam2_translation = found_tag2['tag'][0]
-            cam2_rotation = found_tag2['tag'][1]
+            found_tag2 = self.processor.pipeline(image2, True, "Other Cam")
+            rospy.loginfo(found_tag2)
 
             rospy.loginfo("Finishing Sampling")
 
-            self.t1[0] = cam1_translation[0]
-            self.t1[1] = cam1_translation[1]
-            self.t1[2] = cam1_translation[2]
+            if(self.image_count > 3):
 
-            self.q1[0] = cam1_rotation[0]
-            self.q1[1] = cam1_rotation[1]
-            self.q1[2] = cam1_rotation[2]
-            self.q1[3] = cam1_rotation[3]
+                cam1_translation = found_tag1['tag'][0]
+                cam1_rotation = found_tag1['tag'][1]
 
-            self.t2[0] = cam2_translation[0]
-            self.t2[1] = cam2_translation[1]
-            self.t2[2] = cam2_translation[2]
+                cam2_translation = found_tag2['tag'][0]
+                cam2_rotation = found_tag2['tag'][1]
 
-            self.q2[0] = cam2_rotation[0]
-            self.q2[1] = cam2_rotation[1]
-            self.q2[2] = cam2_rotation[2]
-            self.q2[3] = cam2_rotation[3]
+                self.t1[0] = cam1_translation[0]
+                self.t1[1] = cam1_translation[1]
+                self.t1[2] = cam1_translation[2]
+
+                self.q1[0] = cam1_rotation[0]
+                self.q1[1] = cam1_rotation[1]
+                self.q1[2] = cam1_rotation[2]
+                self.q1[3] = cam1_rotation[3]
+
+                self.t2[0] = cam2_translation[0]
+                self.t2[1] = cam2_translation[1]
+                self.t2[2] = cam2_translation[2]
+
+                self.q2[0] = cam2_rotation[0]
+                self.q2[1] = cam2_rotation[1]
+                self.q2[2] = cam2_rotation[2]
+                self.q2[3] = cam2_rotation[3]
 
             self.sample_done = True
 
@@ -268,39 +266,31 @@ class Pipeline:
             transform2.rotation.x, transform2.rotation.y, transform2.rotation.z, transform2.rotation.w),
                               rospy.Time.now(), "camera_purple", "adjust_objects")
 
-
-
     def update_current_image(self, camera1, camera2):
             # Show images
-            # self.broadcaster()
-
             ret1, image1 = camera1.read()
             ret2, image2 = camera2.read()
 
-
-            # if ret1 and ret2:
-            #     self.publish(image1, image2)
-            #self.record_images(color_image)
-            # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
-            #cv2.imshow('RealSense', images1)
-            # cv2.waitKey(1)
+            if ret1 and ret2:
+                self.broadcaster(image1, image2)
+                self.publish(image1, image2)
 
     def record_images(self, image):
-        # height = image.height
-        # width = image.width
-        #
-        # # Loop through each pixel of the map and convert it to pixel data
-        # new_image = np.zeros((height, width, 3), dtype=np.uint8)
-        #
-        # for i in range(height):
-        #     for j in range(width):
-        #         for k in range(3):
-        #             # BGR encoding for opencv
-        #
-        #             mult = 2 if k == 0 else 0 if k == 2 else 1
-        #             cell = image.data[(i * width * 3 + j * 3 + k)]
-        #             if cell >= 0:
-        #                 new_image[i][j][mult] = cell
+        height = image.height
+        width = image.width
+        
+        # Loop through each pixel of the map and convert it to pixel data
+        new_image = np.zeros((height, width, 3), dtype=np.uint8)
+        
+        for i in range(height):
+            for j in range(width):
+                for k in range(3):
+                    # BGR encoding for opencv
+        
+                    mult = 2 if k == 0 else 0 if k == 2 else 1
+                    cell = image.data[(i * width * 3 + j * 3 + k)]
+                    if cell >= 0:
+                        new_image[i][j][mult] = cell
         cv2.imwrite(str(self.count) + ".jpg", image)
         print("done writing image")
         print(self.count)
@@ -311,10 +301,11 @@ class Pipeline:
     def publish(self, image1, image2):
 
         self.pipeline_rate += 1
-        rospy.loginfo(self.pipeline_rate)
+        #rospy.loginfo(self.pipeline_rate)
 
         tags = self.processor.pipeline(image1, False, "4K")
-
+        # rospy.loginfo("4K")
+        # rospy.loginfo(tags)
         for object_name in self.object_name_list:
             if object_name in tags.keys():
 
@@ -326,17 +317,19 @@ class Pipeline:
                 transform.rotation = Quaternion(quaternion[0], quaternion[1], quaternion[2], quaternion[3])
                 self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), object_name + "_green", "camera_green")
 
-        # tags = self.processor.pipeline(image2, False, "Other Cam")
-        # for object_name in self.object_name_list:
-        #     if object_name in tags.keys():
-        #         transform = Transform()
-        #         translation = tags[object_name][0]
-        #         quaternion = tags[object_name][1]
+        tags = self.processor.pipeline(image2, False, "Other Cam")
+        # rospy.loginfo("Other")
+        # rospy.loginfo(tags)
+        for object_name in self.object_name_list:
+            if object_name in tags.keys():
+                transform = Transform()
+                translation = tags[object_name][0]
+                quaternion = tags[object_name][1]
 
-        #         transform.translation = Vector3(translation[0], translation[1], translation[2])
-        #         transform.rotation = Quaternion(quaternion[0], quaternion[1], quaternion[2], quaternion[3])
+                transform.translation = Vector3(translation[0], translation[1], translation[2])
+                transform.rotation = Quaternion(quaternion[0], quaternion[1], quaternion[2], quaternion[3])
 
-        #         self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), object_name + "_purple", "camera_purple")
+                self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), object_name + "_purple", "camera_purple")
 
 
     def current_milli_time(self):
@@ -345,22 +338,21 @@ class Pipeline:
     def run(self):
         r = rospy.Rate(60)
         # # Start streaming
-        camera1 = cv2.VideoCapture(0)
+        camera1 = cv2.VideoCapture(2)
         camera2 = cv2.VideoCapture(4)
 
         camera1.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
         camera1.set(cv2.CAP_PROP_FPS, 30)
+        camera1.set(3, 1680)
+        camera1.set(4, 1050)
 
         camera2.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
         camera2.set(cv2.CAP_PROP_FPS, 30)
-        camera2.set(3, 2500)
-        camera2.set(4, 1900)
+        camera2.set(3, 1680)
+        camera2.set(4, 1050)
+
         while not rospy.is_shutdown():
-            ret, im = camera2.read()
-            if ret:
-                cv2.imshow("d", im)
-                cv2.waitKey(1)
-            #self.update_current_image(camera1, camera2)
+            self.update_current_image(camera1, camera2)
         
         rospy.spin()
 
