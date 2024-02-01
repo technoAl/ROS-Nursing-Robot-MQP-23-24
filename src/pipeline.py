@@ -29,31 +29,30 @@ class Image_Processing:
     def __init__(self):
 
         self.tag_size = 0.079  # tag size in meters
-        fx_green= 1357.7098
-        fy_green = 1364.4257
-        cx_green = 951.6751
-        cy_green = 511.0647
 
-
-        self.cam1_intrinsics = np.array([[fx_green, 0, cx_green],
-                                         [0, fy_green, cy_green],
+        self.cam_green_intrinsics = np.array([[2016.0694, 0, 1905.0424],
+                                         [0, 2016.9113, 1046.8594],
                                          [0, 0, 1]])
-        self.cam2_intrinsics = np.zeros((3, 3))
+        self.cam_purple_intrinsics = np.array([[1169.9125, 0, 1284.8136],
+                                         [0, 1168.2444, 1015.6015],
+                                         [0, 0, 1]])
         self.br = tf.TransformBroadcaster()
         self.cam1_rot = np.zeros((4, 4))
         self.cam2_rot = np.zeros((4, 4))
 
 
-    def pipeline(self, image, in_init, imageName):
+    def pipeline(self, image, in_init, imageName, camera):
 
-        intrinsics_mat = self.cam1_intrinsics
-        '''if camera == 'cam1':
-            intrinsics_mat = self.cam1_intrinsics
+
+        if camera == 'green':
+            intrinsics_mat = self.cam_green_intrinsics
+            image = cv2.undistort(image, intrinsics_mat, np.array([-0.375,0.1146, 0, 0, 0]), intrinsics_mat)
         else:
-            intrinsics_mat = self.cam2_intrinsics
-        '''
+            intrinsics_mat = self.cam_purple_intrinsics
+
 
         gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
         if in_init:
             self.tag_size = 0.079
         else:
@@ -65,6 +64,7 @@ class Image_Processing:
 
         found_objects = {}
 
+        rospy.loginfo("printing images")
         cv2.imshow(imageName, image)
         cv2.waitKey(1)
 
@@ -199,7 +199,7 @@ class Pipeline:
         self.object_name_list = ["grey_cube", "corn_can", "bottle_2"]
         rospy.sleep(1)
 
-    def callback(self,data):
+    def callback(self, data):
         self.ready = data.data
 
     def broadcaster(self, image1, image2):
@@ -212,11 +212,11 @@ class Pipeline:
 
 
             rospy.loginfo("Processing Camera 1")
-            found_tag1 = self.processor.pipeline(image1, True, "4K")
+            found_tag1 = self.processor.pipeline(image1, True, "4K", 'green')
             rospy.loginfo(found_tag1)
             
             rospy.loginfo("Processing Camera 2")
-            found_tag2 = self.processor.pipeline(image2, True, "Other Cam")
+            found_tag2 = self.processor.pipeline(image2, True, "Other Cam", 'purple')
             rospy.loginfo(found_tag2)
 
             rospy.loginfo("Finishing Sampling")
@@ -272,6 +272,7 @@ class Pipeline:
             ret2, image2 = camera2.read()
 
             if ret1 and ret2:
+                rospy.loginfo("it's working")
                 self.broadcaster(image1, image2)
                 self.publish(image1, image2)
 
@@ -303,7 +304,7 @@ class Pipeline:
         self.pipeline_rate += 1
         #rospy.loginfo(self.pipeline_rate)
 
-        tags = self.processor.pipeline(image1, False, "4K")
+        tags = self.processor.pipeline(image1, False, "4K", 'green')
         # rospy.loginfo("4K")
         # rospy.loginfo(tags)
         for object_name in self.object_name_list:
@@ -317,7 +318,7 @@ class Pipeline:
                 transform.rotation = Quaternion(quaternion[0], quaternion[1], quaternion[2], quaternion[3])
                 self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), object_name + "_green", "camera_green")
 
-        tags = self.processor.pipeline(image2, False, "Other Cam")
+        tags = self.processor.pipeline(image2, False, "Other Cam", 'purple')
         # rospy.loginfo("Other")
         # rospy.loginfo(tags)
         for object_name in self.object_name_list:
@@ -338,18 +339,18 @@ class Pipeline:
     def run(self):
         r = rospy.Rate(60)
         # # Start streaming
-        camera1 = cv2.VideoCapture(2)
-        camera2 = cv2.VideoCapture(4)
+        camera1 = cv2.VideoCapture(4)
+        camera2 = cv2.VideoCapture(6)
 
         camera1.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
         camera1.set(cv2.CAP_PROP_FPS, 30)
-        camera1.set(3, 1680)
-        camera1.set(4, 1050)
+        camera1.set(3, 3840)
+        camera1.set(4, 2160)
 
         camera2.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
         camera2.set(cv2.CAP_PROP_FPS, 30)
-        camera2.set(3, 1680)
-        camera2.set(4, 1050)
+        camera2.set(3, 2500)
+        camera2.set(4, 1900)
 
         while not rospy.is_shutdown():
             self.update_current_image(camera1, camera2)

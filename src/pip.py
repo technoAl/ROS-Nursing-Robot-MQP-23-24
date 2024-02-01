@@ -1,13 +1,15 @@
 import cv2
+import numpy as np
 from apriltag import apriltag
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(6)
 cap.set(0, cv2.CAP_DSHOW)
 cap.set(3, 3840)
 cap.set(4, 2160)
 cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
 cap.set(cv2.CAP_PROP_FPS, 30)
 count = 0
+
 while True:
     ret, im = cap.read()
     if ret:
