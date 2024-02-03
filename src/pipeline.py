@@ -49,13 +49,6 @@ class Image_Processing:
 
 
         gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-        if in_init:
-            self.tag_size = 0.110
-        else:
-            self.tag_size = 0.025
-
-        obj_pts = np.array(object_points(self.tag_size))
         detector = apriltag(family="tag36h11")
         detections = detector.detect(gray_image)  # , estimate_tag_pose=True, camera_params=PARAMS, tag_size=TAG_SIZE)
         # rospy.loginfo("Detector Time " + str(time2 - time1))
@@ -63,8 +56,39 @@ class Image_Processing:
         found_objects = {}
 
         if len(detections) > 0:
-            rospy.loginfo(imageName + " DETECTED:");
             for tag in detections:
+
+                ID = tag['id']
+
+                object_name = ""
+                if ID == 33:
+                    object_name = "tag"
+                    self.tag_size = 0.110                
+                elif ID == 0:
+                    # rospy.loginfo("Grey Cube")
+                    object_name = "grey_cube"
+                    self.tag_size = 0.025
+                elif ID == 1:
+                    # rospy.loginfo("Corn Can")
+                    object_name = "corn_can"
+                    self.tag_size = 0.025
+                elif ID == 2:
+                    # rospy.loginfo("Bottle 2")
+                    object_name = "bottle_2"
+                    self.tag_size = 0.025
+                elif ID == 10:
+                    # rospy.loginfo("White Cup")
+                    object_name = "white_cup"
+                    self.tag_size = 0.04
+                elif ID == 12:
+                    # rospy.loginfo("Blue Cup")
+                    object_name = "blue_cup"
+                    self.tag_size = 0.04
+                else:
+                    continue
+
+                obj_pts = np.array(object_points(self.tag_size))
+
                 center = tag['center']
                 lb_rb_rt_lt = tag['lb-rb-rt-lt']
                 lt_rt_rb_lb = np.zeros((4, 2))
@@ -90,22 +114,7 @@ class Image_Processing:
                     # #new_image = cv2.line(new_image, p4, p1, (0, 255, 0), 2)
         
                     # time1 = self.current_milli_time()
-                    ID = tag['id']
-                    object_name = ""
-                    if in_init and ID == 33:
-                        object_name = "tag"
-                    elif not in_init:
-                        if ID == 0:
-                            rospy.loginfo("Grey Cube")
-                            object_name = "grey_cube"
-                        elif ID == 1:
-                            rospy.loginfo("Corn Can")
-                            object_name = "corn_can"
-                        elif ID == 2:
-                            rospy.loginfo("Bottle 2")
-                            object_name = "bottle_2"
-                    else:
-                        continue
+                    
 
                     rot_matrix, _ = cv2.Rodrigues(prvecs)
                     mat = np.zeros((4, 4), np.float32)
@@ -129,7 +138,6 @@ class Image_Processing:
                     translation = [mat[0, 3], mat[1, 3], mat[2, 3]]
 
                     found_objects[object_name] = (translation, orientation)
-                    rospy.loginfo("\n")
 
         return found_objects
 
@@ -168,10 +176,11 @@ class Pipeline:
 
         self.listener = tf.TransformListener()
 
-        self.sample_done = False
+        self.sample1_done = False
+        self.sample2_done = False
         self.image_count = 0
 
-        self.tagIDs = [0, 1, 2]
+        self.tagIDs = [0, 1, 2, 10, 12]
 
         self.processor = Image_Processing()
 
@@ -191,7 +200,7 @@ class Pipeline:
         rospy.sleep(2)
         self.br.sendTransform((0, 0, 0), tf.transformations.quaternion_from_euler(0, 0, 0), rospy.Time.now(), "adjust",
                               "world")
-        self.object_name_list = ["grey_cube", "corn_can", "bottle_2"]
+        self.object_name_list = ["grey_cube", "corn_can", "bottle_2", "white_cup", "blue_cup"]
         rospy.sleep(1)
 
 
@@ -200,39 +209,50 @@ class Pipeline:
 
     def calibration(self, image, cam_name):
 
-        while not self.sample_done:
-
-            rospy.loginfo("Initiating Sampling")
-            # while self.image_count < 10:
-            #     self.image_count = self.image_count + 1
-
-
-            rospy.loginfo("Processing " + cam_name)
+        while not (self.sample1_done and self.sample2_done):
             found_tag = self.processor.pipeline(image, True, cam_name, cam_name)
-            rospy.loginfo(found_tag)
 
             cam_translation = found_tag['tag'][0]
             cam_rotation = found_tag['tag'][1]
 
-            self.t1[0] = cam_translation[0]
-            self.t1[1] = cam_translation[1]
-            self.t1[2] = cam_translation[2]
+            if(cam_name == "green"):
+                self.t1[0] = cam_translation[0]
+                self.t1[1] = cam_translation[1]
+                self.t1[2] = cam_translation[2]
 
-            self.q1[0] = cam_rotation[0]
-            self.q1[1] = cam_rotation[1]
-            self.q1[2] = cam_rotation[2]
-            self.q1[3] = cam_rotation[3]
+                self.q1[0] = cam_rotation[0]
+                self.q1[1] = cam_rotation[1]
+                self.q1[2] = cam_rotation[2]
+                self.q1[3] = cam_rotation[3]
 
-            self.sample_done = True
+                self.sample1_done = True
+            else:
+                self.t2[0] = cam_translation[0]
+                self.t2[1] = cam_translation[1]
+                self.t2[2] = cam_translation[2]
 
+                self.q2[0] = cam_rotation[0]
+                self.q2[1] = cam_rotation[1]
+                self.q2[2] = cam_rotation[2]
+                self.q2[3] = cam_rotation[3]
+                self.sample2_done = True
 
+            
         transform = Transform()
         transform.translation = Vector3(self.t1[0], self.t1[1], self.t1[2])
         transform.rotation = Quaternion(self.q1[0], self.q1[1], self.q1[2], self.q1[3])
 
         self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (
             transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
-                              rospy.Time.now(), "camera_" + cam_name, "adjust_objects")
+                            rospy.Time.now(), "camera_green", "adjust_objects")
+            
+        transform = Transform()
+        transform.translation = Vector3(self.t2[0], self.t2[1], self.t2[2])
+        transform.rotation = Quaternion(self.q2[0], self.q2[1], self.q2[2], self.q2[3])
+
+        self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (
+            transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
+                                rospy.Time.now(), "camera_purple", "adjust_objects")
 
     def update_current_image(self, camera, cam_name):
             
@@ -241,8 +261,9 @@ class Pipeline:
                 ret, image = camera.read()
 
                 if ret:
+                    # cv2.imshow(cam_name, image)
+                    # cv2.waitKey(1)
                     self.calibration(image, cam_name)
-                    rospy.loginfo("Finishing Sampling")
                     self.publish(image, cam_name)
 
     def record_images(self, image):
@@ -271,11 +292,7 @@ class Pipeline:
     def publish(self, image, cam_name):
 
         self.pipeline_rate += 1
-        #rospy.loginfo(self.pipeline_rate)
-
         tags = self.processor.pipeline(image, False, cam_name, cam_name)
-        # rospy.loginfo("4K")
-        # rospy.loginfo(tags)
         for object_name in self.object_name_list:
             if object_name in tags.keys():
 
@@ -285,13 +302,13 @@ class Pipeline:
 
                 transform.translation = Vector3(translation[0], translation[1], translation[2])
                 transform.rotation = Quaternion(quaternion[0], quaternion[1], quaternion[2], quaternion[3])
-                self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), object_name + "_green", "camera_green")
+                self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), object_name + "_" +  cam_name, "camera_" + cam_name)
 
     def current_milli_time(self):
         return round(time.time() * 1000)
 
     def run(self):
-        r = rospy.Rate(60)
+        r = rospy.Rate(30)
         # # Start streaming
         camera_green = cv2.VideoCapture(2)
         camera_purple = cv2.VideoCapture(4)
@@ -306,8 +323,9 @@ class Pipeline:
         camera_purple.set(3, 2500)
         camera_purple.set(4, 1900)
 
-        green_cam = threading.Thread(self.update_current_image(camera_green, "green"))
-        purple_cam = threading.Thread(self.update_current_image(camera_purple, "purple"))
+        green_cam = threading.Thread(target=self.update_current_image, args=[camera_green, "green"])
+        purple_cam = threading.Thread(target=self.update_current_image, args=[camera_purple, "purple"])
+
 
         green_cam.start()
         purple_cam.start()

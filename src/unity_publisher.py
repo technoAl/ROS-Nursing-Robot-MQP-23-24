@@ -73,7 +73,6 @@ if __name__ == '__main__':
             tag_msg.transforms.append(cube_transform)
 
         except Exception as e:
-            rospy.logwarn(e)
             pass
 
         try:
@@ -82,6 +81,20 @@ if __name__ == '__main__':
 
         except:
             # rospy.logwarn("No Bottle 2")
+            pass
+
+        try:
+            white_transform = broadcast_object('/white_cup_center', 'white_cup', generic_header)
+            tag_msg.transforms.append(white_transform)
+
+        except:
+            pass
+        
+        try:
+            blue_transform = broadcast_object('/blue_cup_center', 'blue_cup', generic_header)
+            tag_msg.transforms.append(blue_transform)
+            
+        except:
             pass
 
         try:

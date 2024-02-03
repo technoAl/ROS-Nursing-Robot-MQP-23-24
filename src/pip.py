@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from apriltag import apriltag
 
-cap = cv2.VideoCapture(6)
+cap = cv2.VideoCapture(4)
 cap.set(0, cv2.CAP_DSHOW)
 cap.set(3, 3840)
 cap.set(4, 2160)
@@ -15,13 +15,15 @@ while True:
     if ret:
         cv2.imshow("d", im)
         cv2.waitKey(1)
-        # gray_image = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-        # detector = apriltag(family="tag36h11")
-        # detections = detector.detect(gray_image)  # , estimate_tag_pose=True, camera_params=PARAMS, tag_size=TAG_SIZE)
-        # if len(detections) > 0:
-        #     print("found")
+        gray_image = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+        detector = apriltag(family="tag36h11")
+        detections = detector.detect(gray_image)  # , estimate_tag_pose=True, camera_params=PARAMS, tag_size=TAG_SIZE)
+        if len(detections) > 0:
+            print("found")
+            for tag in detections:
+                print(tag['id'])
         count+=1
-        print(count)
+        # print(count)
 
 
 

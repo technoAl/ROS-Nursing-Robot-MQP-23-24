@@ -77,15 +77,18 @@ def broadcast_object(object_name):
     try:
         (trans1, rot1) = listener.lookupTransform('/world', '/' + object_name + '_green', rospy.Time(0))
         green_correct = True
-    except:
-        # rospy.logwarn("No Corn Can Transform")
+    except Exception as e:
+        # rospy.logwarn(e)
+        # rospy.loginfo("GRENN HERE")
         pass
 
     purple_correct = False
     try:
         (trans2, rot2) = listener.lookupTransform('/world', '/' + object_name + '_purple', rospy.Time(0))
         purple_correct = True
-    except:
+    except Exception as e:
+        # rospy.logwarn(e)
+        # rospy.loginfo("PURPLE HERE")
         pass
 
     trans, rot = None, None
@@ -114,15 +117,17 @@ def broadcast_object(object_name):
 if __name__ == '__main__':
     rospy.sleep(2)
     rospy.init_node('intermediate_publisher')
-    listener = tf.TransformListener(cache_time=rospy.Duration(0.5))
+    listener = tf.TransformListener(cache_time=rospy.Duration(0.80))
     broadcaster = tf.TransformBroadcaster()
     rospy.sleep(5)
-    rate = rospy.Rate(60)
+    rate = rospy.Rate(30)
     while not rospy.is_shutdown():
 
         broadcast_object('corn_can')
         broadcast_object('grey_cube')
         broadcast_object('bottle_2')
+        broadcast_object('white_cup')
+        broadcast_object('blue_cup')
 
 
         rate.sleep()
