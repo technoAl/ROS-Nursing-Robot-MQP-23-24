@@ -40,7 +40,7 @@ class Image_Processing:
         self.cam1_rot = np.zeros((4, 4))
         self.cam2_rot = np.zeros((4, 4))
 
-    def pipeline(self, image, in_init, imageName, camera):
+    def pipeline(self, image, camera):
         if camera == 'green':
             intrinsics_mat = self.cam_green_intrinsics
             image = cv2.undistort(image, intrinsics_mat, np.array([-0.375, 0.1146, 0, 0, 0]), intrinsics_mat)
@@ -55,39 +55,42 @@ class Image_Processing:
 
         found_objects = {}
 
+        tag_size = 0
         if len(detections) > 0:
             for tag in detections:
 
                 ID = tag['id']
-
                 object_name = ""
                 if ID == 33:
                     object_name = "tag"
-                    self.tag_size = 0.110                
+                    tag_size = 0.110
                 elif ID == 0:
                     # rospy.loginfo("Grey Cube")
                     object_name = "grey_cube"
-                    self.tag_size = 0.025
+                    tag_size = 0.025
                 elif ID == 1:
                     # rospy.loginfo("Corn Can")
                     object_name = "corn_can"
-                    self.tag_size = 0.025
+                    tag_size = 0.025
                 elif ID == 2:
                     # rospy.loginfo("Bottle 2")
                     object_name = "bottle_2"
-                    self.tag_size = 0.025
+                    tag_size = 0.025
                 elif ID == 10:
                     # rospy.loginfo("White Cup")
                     object_name = "white_cup"
-                    self.tag_size = 0.04
+                    tag_size = 0.04
                 elif ID == 12:
                     # rospy.loginfo("Blue Cup")
                     object_name = "blue_cup"
-                    self.tag_size = 0.04
+                    tag_size = 0.04
+                elif ID == 13:
+                    object_name = "robot"
+                    tag_size = 0.04
                 else:
                     continue
 
-                obj_pts = np.array(object_points(self.tag_size))
+                obj_pts = np.array(object_points(tag_size))
 
                 center = tag['center']
                 lb_rb_rt_lt = tag['lb-rb-rt-lt']
@@ -99,23 +102,6 @@ class Image_Processing:
                                                     flags=cv2.SOLVEPNP_IPPE_SQUARE)
 
                 if good:
-
-                    # pt = lt_rt_rb_lb[0]
-                    # print(tuple(pt))
-
-                    # p1 = (int(lt_rt_rb_lb[0][0]), int(lt_rt_rb_lb[0][1]))
-                    # p2 = (int(lt_rt_rb_lb[1][0]), int(lt_rt_rb_lb[1][1]))
-                    # p3 = (int(lt_rt_rb_lb[2][0]), int(lt_rt_rb_lb[2][1]))
-                    # p4 = (int(lt_rt_rb_lb[3][0]), int(lt_rt_rb_lb[3][1]))
-                    #
-                    # image = cv2.line(image, p1, p2, (0, 255, 0), 2)
-                    # image = cv2.line(image, p2, p3, (0, 255, 0), 2)
-                    # #new_image = cv2.line(new_image, p3, p4, (0, 255, 0), 2)
-                    # #new_image = cv2.line(new_image, p4, p1, (0, 255, 0), 2)
-        
-                    # time1 = self.current_milli_time()
-                    
-
                     rot_matrix, _ = cv2.Rodrigues(prvecs)
                     mat = np.zeros((4, 4), np.float32)
                     for i in range(3):
@@ -130,7 +116,7 @@ class Image_Processing:
 
                     # handle pos
 
-                    if in_init and ID == 33:
+                    if ID == 33:
                         mat = np.linalg.inv(mat)
 
                     orientation = quaternion_from_matrix(mat)
@@ -180,15 +166,12 @@ class Pipeline:
         self.sample2_done = False
         self.image_count = 0
 
-        self.tagIDs = [0, 1, 2, 10, 12]
-
         self.processor = Image_Processing()
 
         self.median_filter = [TransformStamped(), TransformStamped(), TransformStamped()]
         self.median_count = 0
         self.still_count = 5
 
-        self.tag_size = 0.079  # tag size in meters
         self.br = tf.TransformBroadcaster()
         self.cam1_rot = np.zeros((4, 4))
         self.cam2_rot = np.zeros((4, 4))
@@ -200,7 +183,7 @@ class Pipeline:
         rospy.sleep(2)
         self.br.sendTransform((0, 0, 0), tf.transformations.quaternion_from_euler(0, 0, 0), rospy.Time.now(), "adjust",
                               "world")
-        self.object_name_list = ["grey_cube", "corn_can", "bottle_2", "white_cup", "blue_cup"]
+        self.object_name_list = ["grey_cube", "corn_can", "bottle_2", "white_cup", "blue_cup", "robot"]
         rospy.sleep(1)
 
 
@@ -210,7 +193,7 @@ class Pipeline:
     def calibration(self, image, cam_name):
 
         while not (self.sample1_done and self.sample2_done):
-            found_tag = self.processor.pipeline(image, True, cam_name, cam_name)
+            found_tag = self.processor.pipeline(image, cam_name)
 
             cam_translation = found_tag['tag'][0]
             cam_rotation = found_tag['tag'][1]
@@ -292,7 +275,7 @@ class Pipeline:
     def publish(self, image, cam_name):
 
         self.pipeline_rate += 1
-        tags = self.processor.pipeline(image, False, cam_name, cam_name)
+        tags = self.processor.pipeline(image, cam_name)
         for object_name in self.object_name_list:
             if object_name in tags.keys():
 
@@ -310,8 +293,8 @@ class Pipeline:
     def run(self):
         r = rospy.Rate(30)
         # # Start streaming
-        camera_green = cv2.VideoCapture(2)
-        camera_purple = cv2.VideoCapture(4)
+        camera_green = cv2.VideoCapture(4)
+        camera_purple = cv2.VideoCapture(2)
 
         camera_green.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
         camera_green.set(cv2.CAP_PROP_FPS, 30)
