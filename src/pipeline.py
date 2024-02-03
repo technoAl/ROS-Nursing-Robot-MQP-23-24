@@ -16,6 +16,7 @@ import tf
 from pyquaternion import Quaternion as pyQuaternion
 from std_msgs.msg import Float32
 import cv2
+import threading
 import statistics
 
 
@@ -193,10 +194,11 @@ class Pipeline:
         self.object_name_list = ["grey_cube", "corn_can", "bottle_2"]
         rospy.sleep(1)
 
+
     def callback(self, data):
         self.ready = data.data
 
-    def calibration(self, image1, image2):
+    def calibration(self, image, cam_name):
 
         while not self.sample_done:
 
@@ -205,67 +207,43 @@ class Pipeline:
             #     self.image_count = self.image_count + 1
 
 
-            rospy.loginfo("Processing Camera 1")
-            found_tag1 = self.processor.pipeline(image1, True, "4K", 'green')
-            rospy.loginfo(found_tag1)
-            
-            rospy.loginfo("Processing Camera 2")
-            found_tag2 = self.processor.pipeline(image2, True, "Other Cam", 'purple')
-            rospy.loginfo(found_tag2)
+            rospy.loginfo("Processing " + cam_name)
+            found_tag = self.processor.pipeline(image, True, cam_name, cam_name)
+            rospy.loginfo(found_tag)
 
-            rospy.loginfo("Finishing Sampling")
+            cam_translation = found_tag['tag'][0]
+            cam_rotation = found_tag['tag'][1]
 
-            cam1_translation = found_tag1['tag'][0]
-            cam1_rotation = found_tag1['tag'][1]
+            self.t1[0] = cam_translation[0]
+            self.t1[1] = cam_translation[1]
+            self.t1[2] = cam_translation[2]
 
-            cam2_translation = found_tag2['tag'][0]
-            cam2_rotation = found_tag2['tag'][1]
-
-            self.t1[0] = cam1_translation[0]
-            self.t1[1] = cam1_translation[1]
-            self.t1[2] = cam1_translation[2]
-
-            self.q1[0] = cam1_rotation[0]
-            self.q1[1] = cam1_rotation[1]
-            self.q1[2] = cam1_rotation[2]
-            self.q1[3] = cam1_rotation[3]
-
-            self.t2[0] = cam2_translation[0]
-            self.t2[1] = cam2_translation[1]
-            self.t2[2] = cam2_translation[2]
-
-            self.q2[0] = cam2_rotation[0]
-            self.q2[1] = cam2_rotation[1]
-            self.q2[2] = cam2_rotation[2]
-            self.q2[3] = cam2_rotation[3]
+            self.q1[0] = cam_rotation[0]
+            self.q1[1] = cam_rotation[1]
+            self.q1[2] = cam_rotation[2]
+            self.q1[3] = cam_rotation[3]
 
             self.sample_done = True
 
 
-        transform1 = Transform()
-        transform1.translation = Vector3(self.t1[0], self.t1[1], self.t1[2])
-        transform1.rotation = Quaternion(self.q1[0], self.q1[1], self.q1[2], self.q1[3])
+        transform = Transform()
+        transform.translation = Vector3(self.t1[0], self.t1[1], self.t1[2])
+        transform.rotation = Quaternion(self.q1[0], self.q1[1], self.q1[2], self.q1[3])
 
-        transform2 = Transform()
-        transform2.translation = Vector3(self.t2[0], self.t2[1], self.t2[2])
-        transform2.rotation = Quaternion(self.q2[0], self.q2[1], self.q2[2], self.q2[3])
+        self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (
+            transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
+                              rospy.Time.now(), "camera_" + cam_name, "adjust_objects")
 
-        self.br.sendTransform((transform1.translation.x, transform1.translation.y, transform1.translation.z), (
-            transform1.rotation.x, transform1.rotation.y, transform1.rotation.z, transform1.rotation.w),
-                              rospy.Time.now(), "camera_green", "adjust_objects")
+    def update_current_image(self, camera, cam_name):
+            
+            while not rospy.is_shutdown():
+                # Show images
+                ret, image = camera.read()
 
-        self.br.sendTransform((transform2.translation.x, transform2.translation.y, transform2.translation.z), (
-            transform2.rotation.x, transform2.rotation.y, transform2.rotation.z, transform2.rotation.w),
-                              rospy.Time.now(), "camera_purple", "adjust_objects")
-
-    def update_current_image(self, camera_green, camera_purple):
-            # Show images
-            ret1, image1 = camera_green.read()
-            ret2, image2 = camera_purple.read()
-
-            if ret1 and ret2:
-                self.calibration(image1, image2)
-                self.publish(image1, image2)
+                if ret:
+                    self.calibration(image, cam_name)
+                    rospy.loginfo("Finishing Sampling")
+                    self.publish(image, cam_name)
 
     def record_images(self, image):
         height = image.height
@@ -290,12 +268,12 @@ class Pipeline:
         rospy.sleep(2)
         cv2.destroyAllWindows()
     
-    def publish(self, image1, image2):
+    def publish(self, image, cam_name):
 
         self.pipeline_rate += 1
         #rospy.loginfo(self.pipeline_rate)
 
-        tags = self.processor.pipeline(image1, False, "4K", 'green')
+        tags = self.processor.pipeline(image, False, cam_name, cam_name)
         # rospy.loginfo("4K")
         # rospy.loginfo(tags)
         for object_name in self.object_name_list:
@@ -308,21 +286,6 @@ class Pipeline:
                 transform.translation = Vector3(translation[0], translation[1], translation[2])
                 transform.rotation = Quaternion(quaternion[0], quaternion[1], quaternion[2], quaternion[3])
                 self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), object_name + "_green", "camera_green")
-
-        tags = self.processor.pipeline(image2, False, "Other Cam", 'purple')
-        # rospy.loginfo("Other")
-        # rospy.loginfo(tags)
-        for object_name in self.object_name_list:
-            if object_name in tags.keys():
-                transform = Transform()
-                translation = tags[object_name][0]
-                quaternion = tags[object_name][1]
-
-                transform.translation = Vector3(translation[0], translation[1], translation[2])
-                transform.rotation = Quaternion(quaternion[0], quaternion[1], quaternion[2], quaternion[3])
-
-                self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), rospy.Time.now(), object_name + "_purple", "camera_purple")
-
 
     def current_milli_time(self):
         return round(time.time() * 1000)
@@ -343,8 +306,17 @@ class Pipeline:
         camera_purple.set(3, 2500)
         camera_purple.set(4, 1900)
 
+        green_cam = threading.Thread(self.update_current_image(camera_green, "green"))
+        purple_cam = threading.Thread(self.update_current_image(camera_purple, "purple"))
+
+        green_cam.start()
+        purple_cam.start()
+
         while not rospy.is_shutdown():
-            self.update_current_image(camera_green, camera_purple)
+            pass
+
+        green_cam.join()
+        purple_cam.join()
         
         rospy.spin()
 
