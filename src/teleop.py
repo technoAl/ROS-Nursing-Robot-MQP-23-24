@@ -80,6 +80,6 @@ if __name__ == '__main__':
             rospy.Time.now(), "adjust_objects", "calibration_tag")
         br.sendTransform(
             (rx, ry, rz), tf.transformations.quaternion_from_euler(0, 0, 0),
-            rospy.Time.now(), "base_link", "robot_adjust")
+            rospy.Time.now(), "robot_adjust", "robot")
 
 

@@ -9,15 +9,16 @@
     <node name="pipeline" pkg="ROS-Nursing-Robot-MQP-23-24" type="pipeline.py" output="screen" />
     <!--node pkg="tf" type="static_transform_publisher" name="adjust" args="0 0 0 1.57079 0 0 world adjust 100" / -->
 
-    <node pkg="tf" type="static_transform_publisher" name="calibration_tag" args="-0.14 0 0 -1.57079 0 0 adjust calibration_tag 100" />
+    <node pkg="tf" type="static_transform_publisher" name="calibration_tag" args="0 0.14 0 3.1415 0 0 adjust calibration_tag 100" />
 
     <node pkg="tf" type="static_transform_publisher" name="grey_cube_center" args="0 0 -0.026 0 0 0 grey_cube grey_cube_center 100" />
     <node pkg="tf" type="static_transform_publisher" name="corn_can_center" args="0 0 -0.056 0 0 0 corn_can corn_can_center 100" />
     <node pkg="tf" type="static_transform_publisher" name="bottle_2_center" args="0 0 -0.046 0 0 0 bottle_2 bottle_2_center 100" />
-    <node pkg="tf" type="static_transform_publisher" name="white_cup_center" args="0 0.0775 0 0 0 0 white_cup white_cup_center 100" />
-    <node pkg="tf" type="static_transform_publisher" name="blue_cup_center" args="0 0.095 0 0 0 0 blue_cup blue_cup_center 100" />    
-    <node pkg="tf" type="static_transform_publisher" name="robot_static" args="-0.2 -0.2 0 3.14159 0 0 adjust robot_adjust 100" />
-    <node pkg="tf" type="static_transform_publisher" name="arm_origin" args="0.17 0 0 0 0 0 base_link arm_origin 100" />
+    <node pkg="tf" type="static_transform_publisher" name="white_cup_center" args="0 0.0425 -0.04 -1.579079 0 0 white_cup white_cup_center 100" />
+    <node pkg="tf" type="static_transform_publisher" name="blue_cup_center" args="0 0.035 -0.04 -1.57079 0 0 blue_cup blue_cup_center 100" />
+
+    <node pkg="tf" type="static_transform_publisher" name="arm_origin" args="-0.11 -0.075 -0.107 -1.57079 0 0 robot_adjust arm_origin 100" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link" args="-0.17 0 0 0 0 0 arm_origin base_link 100" />
     <node name="unity_publisher" pkg="ROS-Nursing-Robot-MQP-23-24" type="unity_publisher.py" output="screen" />
     <node name="intermediate_publisher" pkg="ROS-Nursing-Robot-MQP-23-24" type="intermediate_publisher.py" output="screen" />
     <node name="teleop" pkg="ROS-Nursing-Robot-MQP-23-24" type="teleop.py" output="screen" />

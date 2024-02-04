@@ -78,7 +78,6 @@ if __name__ == '__main__':
         try:
             bot_transform = broadcast_object('/bottle_2_center', 'bottle_2', generic_header)
             tag_msg.transforms.append(bot_transform)
-
         except:
             # rospy.logwarn("No Bottle 2")
             pass
@@ -86,14 +85,18 @@ if __name__ == '__main__':
         try:
             white_transform = broadcast_object('/white_cup_center', 'white_cup', generic_header)
             tag_msg.transforms.append(white_transform)
-
         except:
             pass
         
         try:
             blue_transform = broadcast_object('/blue_cup_center', 'blue_cup', generic_header)
             tag_msg.transforms.append(blue_transform)
-            
+        except:
+            pass
+
+        try:
+            robot_transform = broadcast_object('/robot_center', 'robot', generic_header)
+            tag_msg.transforms.append(robot_transform)
         except:
             pass
 
