@@ -39,7 +39,7 @@ if __name__ == '__main__':
 
     tf_pub = rospy.Publisher('/objects', TFMessage, queue_size=1)
 
-    rate = rospy.Rate(5)
+    rate = rospy.Rate(30)
     while not rospy.is_shutdown():
         tag_msg = TFMessage()
 
