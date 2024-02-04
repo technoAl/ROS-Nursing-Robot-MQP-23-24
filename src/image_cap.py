@@ -2,8 +2,8 @@ import cv2
 
 cap = cv2.VideoCapture(4)
 cap.set(0, cv2.CAP_DSHOW)
-cap.set(3, 2500)
-cap.set(4, 1900)
+cap.set(3, 3840)
+cap.set(4, 2190)
 cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
 cap.set(cv2.CAP_PROP_FPS, 30)
 

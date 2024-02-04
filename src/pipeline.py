@@ -30,11 +30,21 @@ def object_points(tag_size):
 class Image_Processing:
     def __init__(self):
 
-        self.cam_green_intrinsics = np.array([[2016.0694, 0, 1905.0424],
-                                         [0, 2016.9113, 1046.8594],
+        fx_green = 2102.0722
+        fy_green = 2109.2954
+        cx_green = 1829.1608
+        cy_green = 1058.9215
+
+        fx_purple = 1169.9125
+        fy_purple = 1168.2444
+        cx_purple = 1284.8136
+        cy_purple = 1015.6015
+
+        self.cam_green_intrinsics = np.array([[fx_green, 0, cx_green],
+                                         [0, fy_green, cy_green],
                                          [0, 0, 1]])
-        self.cam_purple_intrinsics = np.array([[1169.9125, 0, 1284.8136],
-                                         [0, 1168.2444, 1015.6015],
+        self.cam_purple_intrinsics = np.array([[fx_purple, 0, cx_purple],
+                                         [0, fy_purple, cy_purple],
                                          [0, 0, 1]])
         self.br = tf.TransformBroadcaster()
         self.cam1_rot = np.zeros((4, 4))
@@ -43,7 +53,7 @@ class Image_Processing:
     def pipeline(self, image, camera):
         if camera == 'green':
             intrinsics_mat = self.cam_green_intrinsics
-            image = cv2.undistort(image, intrinsics_mat, np.array([-0.375, 0.1146, 0, 0, 0]), intrinsics_mat)
+            image = cv2.undistort(image, intrinsics_mat, np.array([-0.349, 0.0844, 0, 0, 0]), intrinsics_mat)
         else:
             intrinsics_mat = self.cam_purple_intrinsics
 
