@@ -117,7 +117,7 @@ def broadcast_object(object_name):
 if __name__ == '__main__':
     rospy.sleep(2)
     rospy.init_node('intermediate_publisher')
-    listener = tf.TransformListener(cache_time=rospy.Duration(0.80))
+    listener = tf.TransformListener(cache_time=rospy.Duration(1.00))
     broadcaster = tf.TransformBroadcaster()
     rospy.sleep(5)
     rate = rospy.Rate(30)

@@ -259,28 +259,7 @@ class Pipeline:
                     self.calibration(image, cam_name)
                     self.publish(image, cam_name)
 
-    def record_images(self, image):
-        height = image.height
-        width = image.width
-        
-        # Loop through each pixel of the map and convert it to pixel data
-        new_image = np.zeros((height, width, 3), dtype=np.uint8)
-        
-        for i in range(height):
-            for j in range(width):
-                for k in range(3):
-                    # BGR encoding for opencv
-        
-                    mult = 2 if k == 0 else 0 if k == 2 else 1
-                    cell = image.data[(i * width * 3 + j * 3 + k)]
-                    if cell >= 0:
-                        new_image[i][j][mult] = cell
-        cv2.imwrite(str(self.count) + ".jpg", image)
-        print("done writing image")
-        print(self.count)
-        self.count += 1
-        rospy.sleep(2)
-        cv2.destroyAllWindows()
+                self.rate.sleep()
     
     def publish(self, image, cam_name):
 
@@ -301,10 +280,10 @@ class Pipeline:
         return round(time.time() * 1000)
 
     def run(self):
-        r = rospy.Rate(30)
+        self.rate = rospy.Rate(30)
         # # Start streaming
-        camera_green = cv2.VideoCapture(4)
-        camera_purple = cv2.VideoCapture(2)
+        camera_green = cv2.VideoCapture(2)
+        camera_purple = cv2.VideoCapture(4)
 
         camera_green.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
         camera_green.set(cv2.CAP_PROP_FPS, 30)
@@ -317,6 +296,7 @@ class Pipeline:
         camera_purple.set(4, 1900)
 
         green_cam = threading.Thread(target=self.update_current_image, args=[camera_green, "green"])
+        
         purple_cam = threading.Thread(target=self.update_current_image, args=[camera_purple, "purple"])
 
 
