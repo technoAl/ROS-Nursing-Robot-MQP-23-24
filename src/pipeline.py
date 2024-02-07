@@ -186,6 +186,9 @@ class Pipeline:
         self.cam1_rot = np.zeros((4, 4))
         self.cam2_rot = np.zeros((4, 4))
 
+        self.purple_image = None
+        self.green_image = None
+
         self.ready = ''
 
         rospy.Subscriber('/status', String, self.callback)
@@ -202,8 +205,12 @@ class Pipeline:
 
     def calibration(self, image, cam_name):
 
-        while not (self.sample1_done and self.sample2_done):
+        if not (self.sample1_done and self.sample2_done):
             found_tag = self.processor.pipeline(image, cam_name)
+
+            if not 'tag' in found_tag.keys():
+                rospy.logwarn('Please uncover Calibration tag and make sure tag is in frame')
+                return
 
             cam_translation = found_tag['tag'][0]
             cam_rotation = found_tag['tag'][1]
@@ -247,19 +254,30 @@ class Pipeline:
             transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
                                 rospy.Time.now(), "camera_purple", "adjust_objects")
 
-    def update_current_image(self, camera, cam_name):
+    def process_current_image(self, cam_name):
             
             while not rospy.is_shutdown():
                 # Show images
-                ret, image = camera.read()
-
-                if ret:
-                    # cv2.imshow(cam_name, image)
-                    # cv2.waitKey(1)
+                if cam_name == "green" and not self.green_image is None:
+                    image = self.green_image
+                    self.calibration(image, cam_name)
+                    self.publish(image, cam_name)
+                elif cam_name =="purple" and not self.purple_image is None:
+                    image = self.purple_image
                     self.calibration(image, cam_name)
                     self.publish(image, cam_name)
 
                 self.rate.sleep()
+
+    def get_current_image(self, camera, cam_name):
+        while not rospy.is_shutdown():
+            ok, image = camera.read()
+            if ok:
+                if cam_name == "green":
+                    self.green_image = image
+                else:
+                    self.purple_image = image
+            self.rate.sleep()
     
     def publish(self, image, cam_name):
 
@@ -284,6 +302,8 @@ class Pipeline:
         # # Start streaming
         camera_green = cv2.VideoCapture(2)
         camera_purple = cv2.VideoCapture(4)
+        camera_green.set(cv2.CAP_PROP_BUFFERSIZE, 1);
+        camera_purple.set(cv2.CAP_PROP_BUFFERSIZE, 1);
 
         camera_green.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
         camera_green.set(cv2.CAP_PROP_FPS, 30)
@@ -295,19 +315,23 @@ class Pipeline:
         camera_purple.set(3, 2500)
         camera_purple.set(4, 1900)
 
-        green_cam = threading.Thread(target=self.update_current_image, args=[camera_green, "green"])
-        
-        purple_cam = threading.Thread(target=self.update_current_image, args=[camera_purple, "purple"])
-
+        green_cam = threading.Thread(target=self.process_current_image, args=["green"])
+        green_cam_image_acquisition = threading.Thread(target=self.get_current_image, args=[camera_green, "green"])
+        purple_cam = threading.Thread(target=self.process_current_image, args=["purple"])
+        purple_cam_image_acquisition = threading.Thread(target=self.get_current_image, args=[camera_purple, "purple"])
 
         green_cam.start()
         purple_cam.start()
+        green_cam_image_acquisition.start()
+        purple_cam_image_acquisition.start()
 
         while not rospy.is_shutdown():
             pass
 
         green_cam.join()
         purple_cam.join()
+        green_cam_image_acquisition.join()
+        purple_cam_image_acquisition.join()
         
         rospy.spin()
 
