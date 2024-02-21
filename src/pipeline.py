@@ -70,6 +70,7 @@ class Image_Processing:
             for tag in detections:
 
                 ID = tag['id']
+                rospy.loginfo(ID)
                 object_name = ""
                 if ID == 33:
                     object_name = "tag"
@@ -89,6 +90,9 @@ class Image_Processing:
                 elif ID == 10:
                     # rospy.loginfo("White Cup")
                     object_name = "white_cup"
+                    tag_size = 0.04
+                elif ID == 11:
+                    object_name = "tag"
                     tag_size = 0.04
                 elif ID == 12:
                     # rospy.loginfo("Blue Cup")
@@ -215,7 +219,7 @@ class Pipeline:
             cam_translation = found_tag['tag'][0]
             cam_rotation = found_tag['tag'][1]
 
-            if(cam_name == "green"):
+            if cam_name == "green":
                 self.t1[0] = cam_translation[0]
                 self.t1[1] = cam_translation[1]
                 self.t1[2] = cam_translation[2]
@@ -237,22 +241,22 @@ class Pipeline:
                 self.q2[3] = cam_rotation[3]
                 self.sample2_done = True
 
-            
-        transform = Transform()
-        transform.translation = Vector3(self.t1[0], self.t1[1], self.t1[2])
-        transform.rotation = Quaternion(self.q1[0], self.q1[1], self.q1[2], self.q1[3])
+        if cam_name == "green":
+            transform = Transform()
+            transform.translation = Vector3(self.t1[0], self.t1[1], self.t1[2])
+            transform.rotation = Quaternion(self.q1[0], self.q1[1], self.q1[2], self.q1[3])
 
-        self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (
-            transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
-                            rospy.Time.now(), "camera_green", "adjust_objects")
-            
-        transform = Transform()
-        transform.translation = Vector3(self.t2[0], self.t2[1], self.t2[2])
-        transform.rotation = Quaternion(self.q2[0], self.q2[1], self.q2[2], self.q2[3])
+            self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (
+                transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
+                                rospy.Time.now(), "camera_green", "adjust_objects")
+        else:
+            transform = Transform()
+            transform.translation = Vector3(self.t2[0], self.t2[1], self.t2[2])
+            transform.rotation = Quaternion(self.q2[0], self.q2[1], self.q2[2], self.q2[3])
 
-        self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (
-            transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
-                                rospy.Time.now(), "camera_purple", "adjust_objects")
+            self.br.sendTransform((transform.translation.x, transform.translation.y, transform.translation.z), (
+                transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
+                                    rospy.Time.now(), "camera_purple", "adjust_objects")
 
     def process_current_image(self, cam_name):
             
@@ -300,8 +304,8 @@ class Pipeline:
     def run(self):
         self.rate = rospy.Rate(30)
         # # Start streaming
-        camera_green = cv2.VideoCapture(2)
-        camera_purple = cv2.VideoCapture(4)
+        camera_green = cv2.VideoCapture(4)
+        camera_purple = cv2.VideoCapture(2)
         camera_green.set(cv2.CAP_PROP_BUFFERSIZE, 1);
         camera_purple.set(cv2.CAP_PROP_BUFFERSIZE, 1);
 
