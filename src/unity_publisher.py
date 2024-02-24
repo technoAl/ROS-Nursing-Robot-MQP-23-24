@@ -106,13 +106,13 @@ if __name__ == '__main__':
             pass
 
         try:
-            blue_transform = broadcast_object_gen('/blue_cup_handle', 'blue_cup_handle', '/arm_origin', generic_header)
+            blue_transform = broadcast_object_gen('/blue_cup_handle', 'blue_cup_handle', '/arm_relative', generic_header)
             tag_msg.transforms.append(blue_transform)
         except:
             pass
 
         try:
-            white_transform = broadcast_object_gen('/white_cup_center', 'white_cup_center', '/arm_origin', generic_header)
+            white_transform = broadcast_object_gen('/white_cup_bowl', 'white_cup_bowl', '/arm_relative', generic_header)
             tag_msg.transforms.append(white_transform)
         except:
             pass
@@ -148,6 +148,14 @@ if __name__ == '__main__':
         except:
             # rospy.logwarn("No Corn Can Transform")
             pass
+
+        try:
+            arm_transform0 = broadcast_object('/arm_relative', 'arm_relative', generic_header)
+            tag_msg.transforms.append(arm_transform0)
+        except:
+            # rospy.logwarn("No Corn Can Transform")
+            pass
+
         try:
             arm_transform1 = broadcast_object('/shoulder_link', 'arm_1', generic_header)
             tag_msg.transforms.append(arm_transform1)
