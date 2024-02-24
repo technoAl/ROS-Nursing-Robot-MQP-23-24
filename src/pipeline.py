@@ -70,7 +70,7 @@ class Image_Processing:
             for tag in detections:
 
                 ID = tag['id']
-                rospy.loginfo(ID)
+                #rospy.loginfo(ID)
                 object_name = ""
                 if ID == 33:
                     object_name = "tag"
@@ -304,8 +304,9 @@ class Pipeline:
     def run(self):
         self.rate = rospy.Rate(30)
         # # Start streaming
-        camera_green = cv2.VideoCapture(4)
-        camera_purple = cv2.VideoCapture(2)
+        # ffmpeg -f v4l2 -video_size 640x480 -i /dev/video4 -vf "format=yuv420p" -f sdl "Webcam Feed"
+        camera_green = cv2.VideoCapture(2)
+        camera_purple = cv2.VideoCapture(4)
         camera_green.set(cv2.CAP_PROP_BUFFERSIZE, 1);
         camera_purple.set(cv2.CAP_PROP_BUFFERSIZE, 1);
 

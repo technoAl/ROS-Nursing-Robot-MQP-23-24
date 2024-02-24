@@ -31,6 +31,17 @@ def broadcast_object(lookup_name, child_frame_id, generic_header):
     transform_stamped.child_frame_id = child_frame_id
     return transform_stamped
 
+def broadcast_object_gen(lookup_name, child_frame_id, frame_id, generic_header):
+    (trans, rot) = listener.lookupTransform(frame_id, lookup_name, rospy.Time(0))
+    transform_stamped = TransformStamped()
+    transform = Transform()
+    transform.translation = Vector3(trans[0], trans[1], trans[2])
+    transform.rotation = Quaternion(rot[0], rot[1], rot[2], rot[3])
+    transform_stamped.transform = transform
+    transform_stamped.header = generic_header
+    transform_stamped.child_frame_id = child_frame_id
+    return transform_stamped
+
 if __name__ == '__main__':
     rospy.sleep(2)
     rospy.init_node('unity_publisher')
@@ -91,6 +102,18 @@ if __name__ == '__main__':
         try:
             blue_transform = broadcast_object('/blue_cup_center', 'blue_cup', generic_header)
             tag_msg.transforms.append(blue_transform)
+        except:
+            pass
+
+        try:
+            blue_transform = broadcast_object_gen('/blue_cup_handle', 'blue_cup_handle', '/arm_origin', generic_header)
+            tag_msg.transforms.append(blue_transform)
+        except:
+            pass
+
+        try:
+            white_transform = broadcast_object_gen('/white_cup_center', 'white_cup_center', '/arm_origin', generic_header)
+            tag_msg.transforms.append(white_transform)
         except:
             pass
 
