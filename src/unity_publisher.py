@@ -118,6 +118,18 @@ if __name__ == '__main__':
             pass
 
         try:
+            box_transform = broadcast_object('/box', 'box', generic_header)
+            tag_msg.transforms.append(box_transform)
+        except:
+            pass
+
+        try:
+            box_transform = broadcast_object_gen('/box', 'box_robo', '/arm_relative', generic_header)
+            tag_msg.transforms.append(box_transform)
+        except:
+            pass
+
+        try:
             robot_transform = broadcast_object('/robot_center', 'robot', generic_header)
             tag_msg.transforms.append(robot_transform)
         except:

@@ -101,6 +101,9 @@ class Image_Processing:
                 elif ID == 13:
                     object_name = "robot"
                     tag_size = 0.04
+                elif ID == 15:
+                    object_name = "box"
+                    tag_size = 0.04
                 else:
                     continue
 
@@ -200,7 +203,7 @@ class Pipeline:
         rospy.sleep(2)
         self.br.sendTransform((0, 0, 0), tf.transformations.quaternion_from_euler(0, 0, 0), rospy.Time.now(), "adjust",
                               "world")
-        self.object_name_list = ["grey_cube", "corn_can", "bottle_2", "white_cup", "blue_cup", "robot"]
+        self.object_name_list = ["grey_cube", "corn_can", "bottle_2", "white_cup", "blue_cup", "box", "robot"]
         rospy.sleep(1)
 
 

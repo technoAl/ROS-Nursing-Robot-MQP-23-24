@@ -21,7 +21,7 @@
 
     <!-- <node pkg="tf" type="static_transform_publisher" name="gripper_link" args="0.5 0 0 0 0 0 gripper_link adjust 100" /> -->
     <node pkg="tf" type="static_transform_publisher" name="arm_origin" args="-0.11 -0.095 -0.107 -1.57079 0 0 robot_adjust arm_origin 100" />
-    <node pkg="tf" type="static_transform_publisher" name="arm_relative" args="-0.105 0.1 -0.107 -1.57079 0 0 robot_adjust arm_relative 100" />
+    <node pkg="tf" type="static_transform_publisher" name="arm_relative" args="-0.105 0.100 -0.107 -1.57079 0 0 robot_adjust arm_relative 100" />
     <node pkg="tf" type="static_transform_publisher" name="base_link" args="-0.17 0 0 0 0 0 arm_origin base_link 100" />
     <node name="unity_publisher" pkg="ROS-Nursing-Robot-MQP-23-24" type="unity_publisher.py" output="screen" />
     <node name="intermediate_publisher" pkg="ROS-Nursing-Robot-MQP-23-24" type="intermediate_publisher.py" output="screen" />
