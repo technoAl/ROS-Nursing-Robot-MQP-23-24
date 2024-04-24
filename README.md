@@ -74,3 +74,8 @@ The specific direction for each key depends on the orientation of the calibratio
 
 Since the teleoperation script will be running by default you will need to press `space` to exit the teleoperation script.
 
+### Miscellaneous Notes
+
+If you want to add a new object to the workspace follow these steps:
+1. Ensure that you use an AprilTag in the 36h11 family that is separate from the tag IDs already in use. Refer to the following lines and follow the format to add a tag that the cameras can detect. https://github.com/technoAl/ROS-Nursing-Robot-MQP-23-24/blob/93d46f2faa306de52ecfaef543fba2a1fa6e12f6/src/pipeline.py#L73-L110
+2. 
