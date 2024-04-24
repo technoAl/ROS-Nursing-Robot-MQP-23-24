@@ -77,5 +77,8 @@ Since the teleoperation script will be running by default you will need to press
 ### Miscellaneous Notes
 
 If you want to add a new object to the workspace follow these steps:
-1. Ensure that you use an AprilTag in the 36h11 family that is separate from the tag IDs already in use. Refer to the following lines and follow the format to add a tag that the cameras can detect. https://github.com/technoAl/ROS-Nursing-Robot-MQP-23-24/blob/93d46f2faa306de52ecfaef543fba2a1fa6e12f6/src/pipeline.py#L73-L110
-2. 
+1. Ensure that you use an AprilTag in the 36h11 family that is separate from the tag IDs already in use.
+2. Refer to the following lines and follow the format to add a tag that the cameras can detect along with a corresponding object name. https://github.com/technoAl/ROS-Nursing-Robot-MQP-23-24/blob/93d46f2faa306de52ecfaef543fba2a1fa6e12f6/src/pipeline.py#L73-L110
+3. Add the object name to the following list. https://github.com/technoAl/ROS-Nursing-Robot-MQP-23-24/blob/93d46f2faa306de52ecfaef543fba2a1fa6e12f6/src/pipeline.py#L222
+4. Add the object name to the broadcaster in the intermediate publisher using the following format in `intermediate_publisher.py`. https://github.com/technoAl/ROS-Nursing-Robot-MQP-23-24/blob/488107e449fc831e9eda7880ecc063fd470e78f8/src/intermediate_publisher.py#L118-L124
+5. Use the object name in the following format to add objects to the unity publisher. https://github.com/technoAl/ROS-Nursing-Robot-MQP-23-24/blob/488107e449fc831e9eda7880ecc063fd470e78f8/src/unity_publisher.py#L63-L68
