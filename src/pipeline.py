@@ -30,6 +30,8 @@ def object_points(tag_size):
 class Image_Processing:
     def __init__(self):
 
+        ### Camera intrinsics
+
         fx_green = 2102.0722
         fy_green = 2109.2954
         cx_green = 1829.1608
@@ -61,11 +63,13 @@ class Image_Processing:
         gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         detector = apriltag(family="tag36h11")
         detections = detector.detect(gray_image)  # , estimate_tag_pose=True, camera_params=PARAMS, tag_size=TAG_SIZE)
-        # rospy.loginfo("Detector Time " + str(time2 - time1))
 
         found_objects = {}
 
+        ### Information for April Tags in use
+
         tag_size = 0
+
         if len(detections) > 0:
             for tag in detections:
 
@@ -107,6 +111,8 @@ class Image_Processing:
                 else:
                     continue
 
+                ### Calculate location of objects based off measurements from the April Tag
+
                 obj_pts = np.array(object_points(tag_size))
 
                 center = tag['center']
@@ -147,11 +153,12 @@ class Image_Processing:
 
 class Pipeline:
 
+    ### Initilization for global variables and ros node publishers/subcribers
     def __init__(self):
         """
         Class constructor
         """
-        ### Initialize node, name it 'lab2'
+        ### Initialize node, name it 'pipeline'
         rospy.init_node('pipeline')
 
         self.br = tf.TransformBroadcaster()
@@ -162,14 +169,19 @@ class Pipeline:
         self.intrinsics = 0
         self.plot_publisher = rospy.Publisher('/plot/value', Float32, queue_size=10)
 
-        ### Making robot go 10Hz
+        ### Making robot go 30Hz
+
         self.rate = rospy.Rate(30)
         self.count = 0
+
+        ### Ros Publisher Stuff
 
         self.br.sendTransform((0, 0, 0), tf.transformations.quaternion_from_euler(0, 0, 0), rospy.Time.now(), "adjust",
                               "world")
 
         self.publish_ready = rospy.Publisher('/status', String, queue_size=10)
+
+        ### Translations/quaternion arrays
 
         self.t1 = [0.0, 0.0, 0.0]
         self.q1 = [0.0, 0.0, 0.0, 0.0]
@@ -178,6 +190,8 @@ class Pipeline:
         self.q2 = [0.0, 0.0, 0.0, 0.0]
 
         self.listener = tf.TransformListener()
+
+        ### Initializing vision pipeline variables
 
         self.sample1_done = False
         self.sample2_done = False
@@ -198,6 +212,8 @@ class Pipeline:
 
         self.ready = ''
 
+        ### Ros subsciber stuff
+
         rospy.Subscriber('/status', String, self.callback)
         self.listener = tf.TransformListener()
         rospy.sleep(2)
@@ -210,10 +226,15 @@ class Pipeline:
     def callback(self, data):
         self.ready = data.data
 
+    ### Calibration sequence upon system startup
     def calibration(self, image, cam_name):
+
+        ### If both cameras haven't calibrated
 
         if not (self.sample1_done and self.sample2_done):
             found_tag = self.processor.pipeline(image, cam_name)
+
+            ### If no tags found, give warning, else note distance of tag and use to place cameras in world
 
             if not 'tag' in found_tag.keys():
                 rospy.logwarn('Please uncover Calibration tag and make sure tag is in frame')
@@ -244,6 +265,8 @@ class Pipeline:
                 self.q2[3] = cam_rotation[3]
                 self.sample2_done = True
 
+        ### Publish locations of cams
+
         if cam_name == "green":
             transform = Transform()
             transform.translation = Vector3(self.t1[0], self.t1[1], self.t1[2])
@@ -261,6 +284,7 @@ class Pipeline:
                 transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
                                     rospy.Time.now(), "camera_purple", "adjust_objects")
 
+    ### Process images if there are any, calibrating if not already calibrated and publishing
     def process_current_image(self, cam_name):
             
             while not rospy.is_shutdown():
@@ -276,6 +300,7 @@ class Pipeline:
 
                 self.rate.sleep()
 
+    ### Fetch images from cameras, recording it in global vars
     def get_current_image(self, camera, cam_name):
         while not rospy.is_shutdown():
             ok, image = camera.read()
@@ -286,6 +311,7 @@ class Pipeline:
                     self.purple_image = image
             self.rate.sleep()
     
+    ### Publishes each object currently being detected by camera system
     def publish(self, image, cam_name):
 
         self.pipeline_rate += 1
@@ -308,6 +334,9 @@ class Pipeline:
         self.rate = rospy.Rate(30)
         # # Start streaming
         # ffmpeg -f v4l2 -video_size 640x480 -i /dev/video4 -vf "format=yuv420p" -f sdl "Webcam Feed"
+        # ^ Above is line for displaying web cam feeds, used to ensure good camera placement
+
+        # Sets up cameras and ports
         camera_green = cv2.VideoCapture(4)
         camera_purple = cv2.VideoCapture(2)
         camera_green.set(cv2.CAP_PROP_BUFFERSIZE, 1);
@@ -322,6 +351,8 @@ class Pipeline:
         camera_purple.set(cv2.CAP_PROP_FPS, 30)
         camera_purple.set(3, 2500)
         camera_purple.set(4, 1900)
+
+        # Threads camera processes for increased pipeline speed
 
         green_cam = threading.Thread(target=self.process_current_image, args=["green"])
         green_cam_image_acquisition = threading.Thread(target=self.get_current_image, args=[camera_green, "green"])
