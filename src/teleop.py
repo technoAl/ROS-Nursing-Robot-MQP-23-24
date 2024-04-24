@@ -12,6 +12,15 @@ from tf.transformations import quaternion_from_euler, quaternion_from_matrix
 
 from select import select
 
+""" 
+Based on the TeleOp Turtlebot Script
+
+Utilized to move adjust frames around to perfectly align digital twins
+There are three frames that can be adjusted
+- adjust
+- adjust objects
+- robot adjust
+"""
 def getKey(settings, timeout):
     tty.setraw(sys.stdin.fileno())
     # sys.stdin.read() returns a string on Linux

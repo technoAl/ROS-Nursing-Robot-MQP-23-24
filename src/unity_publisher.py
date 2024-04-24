@@ -10,17 +10,12 @@ from tf2_msgs.msg import TFMessage
 from pyquaternion import Quaternion as pyQuaternion
 
 
-# def cumulative_distance(prev_trans, trans, trans_tolerance, prev_rot, rot, rot_tolerance):
-#     q1 = pyQuaternion(axis=[prev_rot.x, prev_rot.y, prev_rot.z], angle=prev_rot.w)
-#     q2 = pyQuaternion(axis=[rot.x, rot.y, rot.z], angle=rot.w)
-#     if math.sqrt(math.pow(prev_trans.x - trans.x, 2) + math.pow(prev_trans.y - trans.y, 2) + math.pow(prev_trans.z - trans.z, 2)) > trans_tolerance:
-#         return True
-#     elif abs(pyQuaternion.distance(q1, q2)) > rot_tolerance:
-#         return True
-#     else:
-#         return False
-
 def broadcast_object(lookup_name, child_frame_id, generic_header):
+    """
+    Broadcast An Object by looking it up in the TF Tree
+    Grabs the transform relative to origin (/world)
+    """
+
     (trans, rot) = listener.lookupTransform('/world', lookup_name, rospy.Time(0))
     transform_stamped = TransformStamped()
     transform = Transform()
@@ -32,6 +27,11 @@ def broadcast_object(lookup_name, child_frame_id, generic_header):
     return transform_stamped
 
 def broadcast_object_gen(lookup_name, child_frame_id, frame_id, generic_header):
+    """
+    Broadcast An Object by looking it up in the TF Tree
+    Grabs the transform relative to a give frame_id
+    """
+
     (trans, rot) = listener.lookupTransform(frame_id, lookup_name, rospy.Time(0))
     transform_stamped = TransformStamped()
     transform = Transform()
@@ -51,6 +51,7 @@ if __name__ == '__main__':
     tf_pub = rospy.Publisher('/objects', TFMessage, queue_size=1)
 
     rate = rospy.Rate(30)
+    # Broadcast all objects to unity specified here
     while not rospy.is_shutdown():
         tag_msg = TFMessage()
 
@@ -59,20 +60,7 @@ if __name__ == '__main__':
         generic_header.stamp = rospy.Time.now()
         generic_header.frame_id = "world"
 
-        #(adjust_trans, adjust_rot) = listener.lookupTransform('/world', '/adjust', rospy.Time(0))
-
-        # try:
-        #     (camera_trans, camera_rot) = listener.lookupTransform('/world', '/camera', rospy.Time(0))
-        #     transform.translation = Vector3(camera_trans[0], camera_trans[1], camera_trans[2])
-        #     transform.rotation = Quaternion(camera_rot[0], camera_rot[1], camera_rot[2], camera_rot[3])
-        #     tag_msg.transform = transform
-        #     camera_pub.publish(tag_msg)
-        # except:
-        #     #rospy.logwarn("No Camera Transform")
-        #     pass
-
         try:
-
             can_transform = broadcast_object('/corn_can_center', 'corn_can', generic_header)
             tag_msg.transforms.append(can_transform)
         except:

@@ -31,14 +31,13 @@ def nlerp(one, two, t):
     return SQuaternion(scalar, vector).normalized()
 
 def average_positions(t1, r1, t2, r2):
+    """
+    Averages the Quaternion and Position Space of two points
+
+    """
+
     transformation = [0.0, 0.0, 0.0]
     rotation = [0.0, 0.0, 0.0, 0.0]
-
-    # t1 = [t1.x, t1.y, t1.z]
-    # r1 = [r1.x, r1.y, r1.z, r1.w]
-    #
-    # t2 = [t2.x, t2.y, t2.z]
-    # r2 = [r2.x, r2.y, r2.z, r2.w]
 
     nr2 = [-r2[0], -r2[1], -r2[2], -r2[3]]
     q1 = SQuaternion(r1[3], r1[0:3])
@@ -54,24 +53,14 @@ def average_positions(t1, r1, t2, r2):
     for i in range(len(t1)):
         transformation[i] = (t1[i] + t2[i]) / 2
 
-    # x = (r1[0] * r1[3] + r2[0] * r2[3]) / 2
-    # y = (r1[1] * r1[3] + r2[1] * r2[3]) / 2
-    # z = (r1[2] * r1[3] + r2[2] * r2[3]) / 2
-    # w = pow((pow(x, 2) + pow(y, 2) + pow(z, 2)), 0.5)
-    #
-    # new_x = x / w
-    # new_y = y / w
-    # new_z = z / w
-    #
-    # d = pow((pow(new_x, 2) + pow(new_y, 2) + pow(new_z, 2) + pow(w, 2)), 0.5)
-    # q = (new_x / d, new_y / d, new_z / d, w / d)
-
-
-    # for i in range(len(rotation)):
-    #     rotation[i] = q[i]
     return transformation, rotation
 
 def broadcast_object(object_name):
+    """
+    Broadcasts given Object to the TF Tree
+    """
+
+    # Lookup position estimates from the two cameras from the TF Tree
     green_correct = False
     trans1, rot1, trans2, rot2 = None, None, None, None
     try:
@@ -79,7 +68,7 @@ def broadcast_object(object_name):
         green_correct = True
     except Exception as e:
         # rospy.logwarn(e)
-        # rospy.loginfo("GRENN HERE")
+        # rospy.loginfo("GREEN HERE")
         pass
 
     purple_correct = False
@@ -93,7 +82,7 @@ def broadcast_object(object_name):
 
     trans, rot = None, None
 
-
+    # Decide whether to interpolate based on which cameras see the object
     if green_correct and purple_correct:
         trans, rot = average_positions(trans1, rot1, trans2, rot2)
     elif green_correct:
@@ -103,6 +92,7 @@ def broadcast_object(object_name):
     else:
         return
 
+    # Broadcast a final estimate of the pose of the object
     transform = Transform()
 
     transform.translation = Vector3(trans[0], trans[1], trans[2])
@@ -117,12 +107,14 @@ def broadcast_object(object_name):
 if __name__ == '__main__':
     rospy.sleep(2)
     rospy.init_node('intermediate_publisher')
+    # Cache times affects how long it takes objects to disappear in TF history when obstructed from view of the cameras
     listener = tf.TransformListener(cache_time=rospy.Duration(1.00))
     broadcaster = tf.TransformBroadcaster()
     rospy.sleep(5)
     rate = rospy.Rate(30)
     while not rospy.is_shutdown():
 
+        #Broadcast the Following Objects if seen
         broadcast_object('corn_can')
         broadcast_object('grey_cube')
         broadcast_object('bottle_2')
