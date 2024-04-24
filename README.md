@@ -55,7 +55,7 @@ ffmpeg -f v4l2 -video_size 640x480 -i /dev/video# -vf "format=yuv420p" -f sdl "W
 
 If you have a only laptop webcam and did not have the external cameras plugged in while booting up the "#" should be able to be replaced with a 2 or 4. If not, you will have to experiment with different numbers until you find the right one. The command will bring up a view of what the corresponding camera sees. This is useful to ensure that you know which camera is which and that each camera can see the calibration AprilTag.
 
-To set the cameras, edit the following lines: https://github.com/technoAl/ROS-Nursing-Robot-MQP-23-24/blob/0c1b8f5c86c135f94c74517d381832da40414e0c/src/pipeline.py#L340
+To set the cameras, edit the following lines: [https://github.com/technoAl/ROS-Nursing-Robot-MQP-23-24/blob/0c1b8f5c86c135f94c74517d381832da40414e0c/src/pipeline.py#L340](https://github.com/technoAl/ROS-Nursing-Robot-MQP-23-24/blob/93d46f2faa306de52ecfaef543fba2a1fa6e12f6/src/pipeline.py#L340-L341)
 
 ### Running
 
