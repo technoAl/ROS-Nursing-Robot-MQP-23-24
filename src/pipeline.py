@@ -32,10 +32,10 @@ class Image_Processing:
 
         ### Camera intrinsics
 
-        fx_green = 2102.0722
-        fy_green = 2109.2954
-        cx_green = 1829.1608
-        cy_green = 1058.9215
+        fx_green = 2079.1524
+        fy_green = 2080.3008
+        cx_green = 1765.0933
+        cy_green = 1155.3303
 
         fx_purple = 1169.9125
         fy_purple = 1168.2444
@@ -55,7 +55,7 @@ class Image_Processing:
     def pipeline(self, image, camera):
         if camera == 'green':
             intrinsics_mat = self.cam_green_intrinsics
-            image = cv2.undistort(image, intrinsics_mat, np.array([-0.349, 0.0844, 0, 0, 0]), intrinsics_mat)
+            image = cv2.undistort(image, intrinsics_mat, np.array([-0.3279, 0.0796, 0, 0, 0]), intrinsics_mat)
         else:
             intrinsics_mat = self.cam_purple_intrinsics
 
