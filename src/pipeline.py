@@ -37,10 +37,10 @@ class Image_Processing:
         cx_green = 1765.0933
         cy_green = 1155.3303
 
-        fx_purple = 1169.9125
-        fy_purple = 1168.2444
-        cx_purple = 1284.8136
-        cy_purple = 1015.6015
+        fx_purple = 2048.4377
+        fy_purple = 2077.7463
+        cx_purple = 1716.7064
+        cy_purple = 1078.1984
 
         self.cam_green_intrinsics = np.array([[fx_green, 0, cx_green],
                                          [0, fy_green, cy_green],
@@ -58,6 +58,7 @@ class Image_Processing:
             image = cv2.undistort(image, intrinsics_mat, np.array([-0.3279, 0.0796, 0, 0, 0]), intrinsics_mat)
         else:
             intrinsics_mat = self.cam_purple_intrinsics
+            image = cv2.undistort(image, intrinsics_mat, np.array([-0.3774, 0.1075, 0, 0, 0]), intrinsics_mat)
 
 
         gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -349,8 +350,8 @@ class Pipeline:
 
         camera_purple.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
         camera_purple.set(cv2.CAP_PROP_FPS, 30)
-        camera_purple.set(3, 2500)
-        camera_purple.set(4, 1900)
+        camera_purple.set(3, 3840)
+        camera_purple.set(4, 2160)
 
         # Threads camera processes for increased pipeline speed
 
