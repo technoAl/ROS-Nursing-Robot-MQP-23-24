@@ -117,15 +117,45 @@ if __name__ == '__main__':
         except:
             pass
 
+        try:
+            red_transform = broadcast_object_gen('/red_prism_center', 'red_prism_center', '/arm_relative', generic_header)
+            tag_msg.transforms.append(red_transform)
+        except:
+            pass
+
+        try:
+            green_transform = broadcast_object_gen('/green_prism_center', 'green_prism_center', '/arm_relative', generic_header)
+            tag_msg.transforms.append(green_transform)
+        except:
+            pass
+
+        try:
+            blue_transform = broadcast_object_gen('/blue_prism_center', 'blue_prism_center', '/arm_relative', generic_header)
+            tag_msg.transforms.append(blue_transform)
+        except:
+            pass
+        
         # try:
-        #     red_transform = broadcast_object('/red_prism_center', 'red_prism', generic_header)
-        #     tag_msg.transforms.append(red_transform)
+        #     prism_transform = broadcast_object('/prism_insert', 'prism_insert', generic_header)
+        #     tag_msg.transforms.append(prism_transform)
         # except:
         #     pass
 
         try:
-            red_transform = broadcast_object_gen('/red_prism_center', 'red_prism_center', '/arm_relative', generic_header)
-            tag_msg.transforms.append(red_transform)
+            prism_transform = broadcast_object_gen('/prism_insert', 'prism_insert_red', '/arm_relative', generic_header)
+            tag_msg.transforms.append(prism_transform)
+        except:
+            pass
+
+        try:
+            prism_transform = broadcast_object_gen('/prism_insert', 'prism_insert_green', '/arm_relative', generic_header)
+            tag_msg.transforms.append(prism_transform)
+        except:
+            pass
+
+        try:
+            prism_transform = broadcast_object_gen('/prism_insert', 'prism_insert_green', '/arm_relative', generic_header)
+            tag_msg.transforms.append(prism_transform)
         except:
             pass
 

@@ -123,5 +123,8 @@ if __name__ == '__main__':
         broadcast_object('box')
         broadcast_object('robot')
         broadcast_object('red_prism')
+        broadcast_object('green_prism')
+        broadcast_object('blue_prism')
+        broadcast_object('prism_insert')
         rate.sleep()
 

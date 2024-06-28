@@ -92,6 +92,18 @@ class Image_Processing:
                     # rospy.loginfo("Bottle 2")
                     object_name = "bottle_2"
                     tag_size = 0.025
+                elif ID == 3:
+                    object_name = "red_prism"
+                    tag_size = 0.02
+                elif ID == 5:
+                    object_name = "green_prism"
+                    tag_size = 0.02
+                elif ID == 6:
+                    object_name = "prism_insert"
+                    tag_size = 0.02
+                elif ID == 8:
+                    object_name = "blue_prism"
+                    tag_size = 0.02
                 elif ID == 10:
                     # rospy.loginfo("White Cup")
                     object_name = "white_cup"
@@ -109,9 +121,6 @@ class Image_Processing:
                 elif ID == 15:
                     object_name = "box"
                     tag_size = 0.04
-                elif ID == 3:
-                    object_name = "red_prism"
-                    tag_size = 0.02
                 else:
                     continue
 
@@ -223,7 +232,7 @@ class Pipeline:
         rospy.sleep(2)
         self.br.sendTransform((0, 0, 0), tf.transformations.quaternion_from_euler(0, 0, 0), rospy.Time.now(), "adjust",
                               "world")
-        self.object_name_list = ["grey_cube", "corn_can", "bottle_2", "white_cup", "blue_cup", "box", "robot", "red_prism"]
+        self.object_name_list = ["grey_cube", "corn_can", "bottle_2", "white_cup", "blue_cup", "box", "robot", "red_prism", "green_prism", "blue_prism", "prism_insert"]
         rospy.sleep(1)
 
 
