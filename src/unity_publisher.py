@@ -117,6 +117,18 @@ if __name__ == '__main__':
         except:
             pass
 
+        # try:
+        #     red_transform = broadcast_object('/red_prism_center', 'red_prism', generic_header)
+        #     tag_msg.transforms.append(red_transform)
+        # except:
+        #     pass
+
+        try:
+            red_transform = broadcast_object_gen('/red_prism_center', 'red_prism_center', '/arm_relative', generic_header)
+            tag_msg.transforms.append(red_transform)
+        except:
+            pass
+
         try:
             robot_transform = broadcast_object('/robot_center', 'robot', generic_header)
             tag_msg.transforms.append(robot_transform)

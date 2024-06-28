@@ -338,8 +338,8 @@ class Pipeline:
         # ^ Above is line for displaying web cam feeds, used to ensure good camera placement
 
         # Sets up cameras and ports
-        camera_green = cv2.VideoCapture(4)
-        camera_purple = cv2.VideoCapture(2)
+        camera_green = cv2.VideoCapture(2)
+        camera_purple = cv2.VideoCapture(4)
         camera_green.set(cv2.CAP_PROP_BUFFERSIZE, 1);
         camera_purple.set(cv2.CAP_PROP_BUFFERSIZE, 1);
 

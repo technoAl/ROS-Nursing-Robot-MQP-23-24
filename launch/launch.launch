@@ -18,6 +18,7 @@
     <node pkg="tf" type="static_transform_publisher" name="white_cup_bowl" args="0 0.065 0 -1.579079 0 0 white_cup white_cup_bowl 100" />
     <node pkg="tf" type="static_transform_publisher" name="blue_cup_center" args="0 0.065 -0.04 -1.57079 0 0 blue_cup blue_cup_center 100" />
     <node pkg="tf" type="static_transform_publisher" name="blue_cup_handle" args="0 0.13 0 -1.57079 0 0 blue_cup blue_cup_handle 100" />
+    <node pkg="tf" type="static_transform_publisher" name="red_prism_center" args="0 0 0 0 0 0 red_prism red_prism_center 100" />
 
     <!-- <node pkg="tf" type="static_transform_publisher" name="gripper_link" args="0.5 0 0 0 0 0 gripper_link adjust 100" /> -->
     <node pkg="tf" type="static_transform_publisher" name="arm_origin" args="-0.11 -0.095 -0.107 -1.57079 0 0 robot_adjust arm_origin 100" />

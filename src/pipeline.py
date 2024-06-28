@@ -109,6 +109,9 @@ class Image_Processing:
                 elif ID == 15:
                     object_name = "box"
                     tag_size = 0.04
+                elif ID == 3:
+                    object_name = "red_prism"
+                    tag_size = 0.02
                 else:
                     continue
 
@@ -220,7 +223,7 @@ class Pipeline:
         rospy.sleep(2)
         self.br.sendTransform((0, 0, 0), tf.transformations.quaternion_from_euler(0, 0, 0), rospy.Time.now(), "adjust",
                               "world")
-        self.object_name_list = ["grey_cube", "corn_can", "bottle_2", "white_cup", "blue_cup", "box", "robot"]
+        self.object_name_list = ["grey_cube", "corn_can", "bottle_2", "white_cup", "blue_cup", "box", "robot", "red_prism"]
         rospy.sleep(1)
 
 
@@ -338,8 +341,8 @@ class Pipeline:
         # ^ Above is line for displaying web cam feeds, used to ensure good camera placement
 
         # Sets up cameras and ports
-        camera_green = cv2.VideoCapture(4)
-        camera_purple = cv2.VideoCapture(2)
+        camera_green = cv2.VideoCapture(2)
+        camera_purple = cv2.VideoCapture(4)
         camera_green.set(cv2.CAP_PROP_BUFFERSIZE, 1);
         camera_purple.set(cv2.CAP_PROP_BUFFERSIZE, 1);
 
